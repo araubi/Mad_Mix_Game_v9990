@@ -64,7 +64,7 @@ buffer en `$E800`, deja las 4 páginas en RAM y salta a `START`
 
 | Fase | Contenido | Estado |
 |---|---|---|
-| **F0** | ROM del juego original (TMS9918) con el cargador definitivo y los fixes de Pazos — referencia para comparar | hecha, pendiente de probar en emulador |
+| **F0** | ROM del juego original (TMS9918) con el cargador definitivo y los fixes de Pazos — referencia para comparar | hecha y probada en openMSX (C-BIOS MSX1): logo, portada, menú y partida |
 | **F1** | Detección e inicialización del V9990 en P1, paleta, conversión de las 91 losetas a patrones de 4 bpp, laberinto en la capa B y scroll por hardware enganchado a la cámara | — |
 | **F2** | Actores como sprites (64 patrones fuente + versiones volteadas); retirar `MOTOR_ACTORES` y el volcado por frame | — |
 | **F3** | Capa A: marco de caramelo, marcador, vidas, icono de nivel, destellos del HUD | — |
