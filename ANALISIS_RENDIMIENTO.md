@@ -100,3 +100,81 @@ frame. Son los que combinan scroll y volcado completo. El scroll ya
 está desenrollado (`RLD`/`LDI`); bajar de ahí exigiría convertir
 `BUFFER_LOSETAS_TRABAJO` en un buffer circular para no copiarlo en cada
 paso. Ese cambio toca el volcado y el dibujado de actores.
+
+## Segunda ronda: el ~10 % de tics que se pasan
+
+### Método
+
+Una partida jugada no sirve para comparar versiones. Las teclas van por
+tiempo y `GENERAR_ALEATORIO` usa el registro `R`, cuyo valor depende de
+cuántas instrucciones se hayan ejecutado. Por eso cada versión juega
+una partida distinta. Se ha añadido una compilación de pruebas
+(`tools/build.py --pruebas`) que cambia `LD A,R` por `LD A,L`, de modo
+que la demo, que lleva la entrada grabada, es idéntica tic a tic en
+cualquier versión. Con `PERF_HASH=1`, `pruebas/perfil.tcl` saca en cada
+tic una huella de:
+- las variables (`$2B00-$2DFF`),
+- la matriz del nivel,
+- la parte visible de `BUFFER_LOSETAS_TRABAJO`.
+
+`pruebas/compara_estado.py` compara esas huellas. Desglose por tic:
+`analiza_tics.py`, `analiza_carga.py` y `ritmo.py`.
+
+### Qué hace que un tic se pase
+
+Tics que se pasan frente a tics a tiempo, en frames por tic (demo a
+50 Hz):
+
+| | se pasan | a tiempo |
+|---|---|---|
+| Volcado a VRAM | 1,57 | 1,53 |
+| Scroll horizontal (`RLD` en 144 × 24 bytes) | 1,07 | 0,84 |
+| Actores | **1,74** | 0,48 |
+| — de ellos `DIBUJAR_FILA_DESPLAZADA_DERECHA` | 0,81 | 0,10 |
+
+Desplazamientos sub-píxel medidos: solo 0, 2, 4 y 6 (los actores se
+mueven de 2 en 2 px). El de 6 a la derecha costaba 6 pasos de unos 89
+ciclos por fila.
+
+### Cambios
+
+1. `INVERTIR_BITS_OPT`: el espejo de los patrones se hace con una tabla
+   de 256 bytes. Comprobado en 26 llamadas reales que el resultado
+   coincide byte a byte con el original.
+2. `DIBUJAR_FILA_DESPLAZADA_6`: el desplazamiento de 6 a la derecha se
+   hace como 2 pasos a la izquierda, con un registro que recoge lo que
+   sale por arriba.
+3. `ESPERAR_TIC` con recuperación: si un tic llega un frame tarde, el
+   siguiente se adelanta ese frame. Si el retraso es mayor, se
+   resincroniza. Se aplica también a la demo, que antes iba sin ritmo
+   fijo.
+
+**Verificación:** en 370 tics de la demo determinista, el estado del
+juego y cada píxel visible del buffer son idénticos a los de `f0b` (y
+a los del original, `f0`). En todas las pasadas hubo 0 accesos a VRAM
+demasiado rápidos y 0 escrituras en `$6C00-$83FF`.
+
+### Resultado
+
+Carga por tic sobre los mismos 364 tics de la demo:
+
+| | carga media | p90 | p99 | tics que no caben |
+|---|---|---|---|---|
+| f0b, 50 Hz | 4,68 | 5,89 | 6,73 | 38 % |
+| ahora, 50 Hz | 4,63 | 5,71 | 6,33 | 36 % |
+| f0b, 60 Hz | 5,69 | 7,31 | 8,20 | 41 % |
+| ahora, 60 Hz | 5,64 | 6,98 | 7,64 | 41 % |
+
+Los tics más pesados bajan un 6-7 % y en la demo a 50 Hz los tics de 7
+frames pasan de 24 a 8. La demo es el peor caso, porque hace scroll en
+casi todos los tics. En partida los tics pesados vienen sueltos, y ahí
+la recuperación de un frame evita que el juego pierda velocidad.
+
+**Límite del TMS9918.** Un tic con scroll horizontal y varios
+fantasmas necesita unos 1,4 frames de volcado (a la velocidad máxima
+del VDP), alrededor de 1 frame de scroll y de 1 a 1,7 frames de
+actores. Con 5 frames de presupuesto a 50 Hz eso no siempre cabe.
+Bajar de ahí obliga a reescribir el render del TMS en modo carácter, con
+losetas precalculadas en lugar de un mapa de bits. Es justo lo que
+resuelve el port al V9990 (scroll y sprites por hardware), así que se
+deja aquí la versión MSX1.

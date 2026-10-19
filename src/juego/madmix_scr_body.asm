@@ -4314,7 +4314,7 @@ GESTIONAR_CICLO_NIVELES:                ; $6045
     AND $1F
     LD D, A
     CALL ENLACE_MOTOR_MOVIMIENTO_COLISION
-    CALL WAIT_VBLANK               ; WAIT_VBLANK (madmix1.asm)
+    CALL ESPERAR_TIC               ; PROYECTO (optimizacion): tic a ritmo fijo, como el juego. Original: CALL WAIT_VBLANK
     CALL ACTUALIZAR_LOSETA_BOLA_ESPECIAL
     CALL COMPROBAR_PULSACION
     JR NZ, .FIN_CICLO_NIVELES

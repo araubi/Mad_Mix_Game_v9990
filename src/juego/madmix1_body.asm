@@ -299,10 +299,12 @@ MOTOR_ACTORES:                  ; objetivo real de JT_MOTOR_ACTORES (0x8440)
     ADD A, L
     INC A
 .CONTINUAR_TRAS_ELEGIR_DIRECCION:
-    AND $07                       ; bits 0-2 = cantidad de desplazamiento sub-pixel (0-7)
-    EXX
-    LD C, A
-    EXX
+    ; PROYECTO (optimizacion): ELEGIR_VARIANTE_OPT hace lo mismo y ademas
+    ; usa DIBUJAR_FILA_DESPLAZADA_6 para el desplazamiento 6 a la derecha.
+    ; Original: AND $07 (bits 0-2 = desplazamiento sub-pixel) / EXX / LD C,A / EXX
+    CALL ELEGIR_VARIANTE_OPT
+    NOP
+    NOP
     LD A, (IX+$04)
     LD L, (IX+$00)
     LD H, (IX+$01)
@@ -589,9 +591,9 @@ CONTINUAR_CAPTURA_MASCARAS_ACTORES:
 ; para la mitad "orden de bytes"); proposito exacto sin confirmar en
 ; vivo todavia. ---
 INVERTIR_BITS_PATRON_ACTOR:
-    PUSH AF
-    PUSH HL
-    PUSH DE
+    ; PROYECTO (optimizacion): sustituida por INVERTIR_BITS_OPT (tabla de
+    ; espejo). Original: PUSH AF / PUSH HL / PUSH DE
+    JP INVERTIR_BITS_OPT
     PUSH BC
     LD B, 48                     ; 48 = tope de bloques a procesar (limite superior, no necesariamente alcanzado)
     LD A, ($8435)

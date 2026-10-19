@@ -33,6 +33,16 @@ FIN_MOTOR:
     ORG $6500
     INCLUDE "optimizaciones.asm"
 
+    ; Compilacion de pruebas (tools/build.py --pruebas): GENERAR_ALEATORIO
+    ; usa la semilla en vez del registro R, cuyo valor depende de cuantas
+    ; instrucciones se hayan ejecutado. Asi la demo (entrada grabada) es
+    ; identica tic a tic en cualquier version y se pueden comparar.
+    IFDEF PRUEBAS
+    ORG GENERAR_ALEATORIO + 4
+    ASSERT {b $} == $ED         ; LD A,R = ED 5F
+    DB $7D, $00                 ; LD A,L / NOP
+    ENDIF
+
     SAVEBIN "../../build/ram_1000.bin", $1000, $5500
     SAVEBIN "../../build/ram_6500.bin", $6500, FIN_OPTIMIZACIONES-$6500
     SAVEBIN "../../build/ram_8400.bin", START, FIN_MOTOR-START

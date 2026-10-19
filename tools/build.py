@@ -11,7 +11,9 @@ build.py -- Mad Mix Game v9990: compila la ROM completa.
   3. src/rom/rom.asm -> build/madmix_v9990.rom (ASCII16), rellenada a
      potencia de 2.
 
-Uso: python3 tools/build.py   (requiere sjasmplus en el PATH)
+Uso: python3 tools/build.py [--pruebas]   (requiere sjasmplus en el PATH)
+     --pruebas: ROM con aleatoriedad determinista (ver imagen_ram.asm),
+                build/madmix_v9990_pruebas.rom
 """
 import os
 import shutil
@@ -31,9 +33,13 @@ TABLAS = [
 ]
 
 
+PRUEBAS = "--pruebas" in sys.argv
+
+
 def sjasmplus(cwd, fuente):
     exe = shutil.which("sjasmplus") or os.path.expanduser("~/.local/bin/sjasmplus")
-    r = subprocess.run([exe, "--nologo", "--msg=war", fuente], cwd=cwd)
+    extra = ["-DPRUEBAS"] if PRUEBAS else []
+    r = subprocess.run([exe, "--nologo", "--msg=war"] + extra + [fuente], cwd=cwd)
     if r.returncode:
         sys.exit(f"ERROR: sjasmplus fallo en {fuente}")
 
@@ -73,6 +79,8 @@ def main():
     while tam < len(rom):
         tam *= 2
     rom += b"\xff" * (tam - len(rom))
+    if PRUEBAS:
+        os.replace(rom_path, rom_path := rom_path.replace(".rom", "_pruebas.rom"))
     open(rom_path, "wb").write(rom)
     print(f"ROM: {rom_path} ({len(rom) // 1024} KB, ASCII16, {len(rom) // BANCO} bancos;"
           f" carga util {len(carga)} bytes)")

@@ -16,6 +16,10 @@
 ;     ejecutaba en cada tic sin efecto (~28 000 ciclos).
 ;  4. Volcado desenrollado: 30 ciclos por byte en vez de ~36, por
 ;     encima del minimo del TMS9918 en pantalla activa (~29).
+;  5. Espejo de actores con tabla (INVERTIR_BITS_OPT) y desplazamiento
+;     sub-pixel 6 en 2 pasos (DIBUJAR_FILA_DESPLAZADA_6): los actores y
+;     el scroll horizontal son lo que hace pasarse de tiempo a un tic.
+;  6. Paso fijo con recuperacion de un frame (ESPERAR_TIC).
 ; ==============================================================
 
     ASSERT $ == $6500
@@ -82,24 +86,52 @@ WAIT_VBLANK_OPT:
     RET
 
 ; --------------------------------------------------------------
-;  ESPERAR_TIC: sustituye a WAIT_VBLANK en BUCLE_PRINCIPAL_JUEGO.
-;  Espera hasta que el siguiente VBLANK caiga TIC_FRAMES frames
-;  despues del ultimo volcado; si el tic se paso de tiempo no espera
-;  (se resincroniza solo).
+;  ESPERAR_TIC: sustituye a WAIT_VBLANK en BUCLE_PRINCIPAL_JUEGO y en
+;  la demo. Paso fijo con recuperacion: el volcado de cada tic debe
+;  empezar en el VBLANK numero OBJETIVO_TIC. Si un tic llega tarde un
+;  frame, el siguiente se adelanta ese frame (el juego mantiene
+;  10 tics/s de media y el retraso no se acumula); si llega tarde mas
+;  de un frame, o es el primer tic tras una pausa, se resincroniza sin
+;  recuperar, para que nunca haya dos tics seguidos demasiado juntos.
+;  Mismo contrato que WAIT_VBLANK: conserva todo salvo AF, A=0/Z.
 ; --------------------------------------------------------------
 ESPERAR_TIC:
     EI
     PUSH HL
-.BUCLE:
-    LD HL, ULTIMO_FLANCO
-    LD A, (CONTADOR_FRAMES)
-    SUB (HL)
-    INC A                       ; flanco que esperara WAIT_VBLANK_OPT
-    LD HL, TIC_FRAMES
-    CP (HL)
-    JR C, .BUCLE
+    PUSH BC
+    LD HL, CONTADOR_FRAMES
+.ESPERAR:
+    LD A, (OBJETIVO_TIC)
+    SUB (HL)                    ; d = frames que faltan hasta el objetivo
+    CP 2
+    JR C, .LISTO                ; d <= 1 (o ya pasado): toca volcar en el siguiente VBLANK
+    LD B, A
+    LD A, (TIC_FRAMES)
+    CP B
+    JR NC, .ESPERAR             ; 2 <= d <= TIC_FRAMES: esperar
+                                ; d mayor: objetivo sin sentido (pausa, primer tic) -> no esperar
+.LISTO:
+    POP BC
     POP HL
-    JP WAIT_VBLANK_OPT
+    CALL WAIT_VBLANK_OPT        ; vuelca; ULTIMO_FLANCO = VBLANK real del volcado
+    PUSH HL
+    LD HL, OBJETIVO_TIC
+    LD A, (ULTIMO_FLANCO)
+    SUB (HL)                    ; retraso respecto al objetivo
+    CP 2
+    LD A, (ULTIMO_FLANCO)
+    JR NC, .RESINCRONIZAR       ; retraso >= 2, o negativo (objetivo viejo)
+    LD A, (HL)                  ; retraso 0 o 1: el siguiente objetivo es este + N
+.RESINCRONIZAR:
+    LD H, A
+    LD A, (TIC_FRAMES)
+    ADD A, H
+    LD (OBJETIVO_TIC), A
+    POP HL
+    XOR A
+    RET
+
+OBJETIVO_TIC: DB 0
 
 ; --------------------------------------------------------------
 ;  ACTUALIZAR_VRAM_FRAME_OPT: equivalente a ACTUALIZAR_VRAM_FRAME sin
@@ -179,6 +211,229 @@ VOLCAR_FILA_CARACTERES:
 .C = .C + 1
     EDUP
     RET
+
+; --------------------------------------------------------------
+;  INVERTIR_BITS_OPT: sustituye a INVERTIR_BITS_PATRON_ACTOR (espejo
+;  horizontal del patron fuente del actor, en su sitio). Mismo
+;  resultado: cada bloque de n bytes ($8435) queda invertido de orden y
+;  con los bits de cada byte en espejo, para 48 bloques desde ($8433).
+;  El original invertia bit a bit (8 RLC/RRA por byte, ~170 ciclos por
+;  byte contando el LDIR de vuelta); aqui se intercambian los bytes de
+;  los extremos hacia el centro y el espejo sale de TABLA_ESPEJO
+;  (~65 ciclos por byte). Se llama mucho cuando varios actores
+;  comparten patron y miran a lados distintos (el patron se voltea y
+;  se vuelve a voltear en cada dibujado).
+;  Entrada como el original; sale por SALIR_MOTOR_ACTORES.
+; --------------------------------------------------------------
+INVERTIR_BITS_OPT:
+    PUSH AF
+    PUSH HL
+    PUSH DE
+    PUSH BC
+    EXX
+    PUSH HL
+    PUSH BC
+    LD H, HIGH TABLA_ESPEJO     ; H' = pagina de la tabla
+    EXX
+    LD HL, ($8433)
+    LD A, 48
+.BUCLE_BLOQUES:
+    PUSH AF
+    LD A, ($8435)
+    LD C, A
+    LD B, 0
+    PUSH HL
+    ADD HL, BC                  ; HL = inicio del bloque siguiente
+    EX (SP), HL                 ; pila = siguiente, HL = inicio
+    LD D, H
+    LD E, L
+    ADD HL, BC
+    DEC HL
+    EX DE, HL                   ; HL = primer byte, DE = ultimo
+    LD A, C
+    SRL A                       ; A = numero de parejas, CF = hay byte central
+    PUSH AF
+    JR Z, .SIN_PAREJAS
+    LD B, A
+.BUCLE_PAREJA:
+    LD A, (HL)
+    EXX
+    LD L, A
+    LD C, (HL)                  ; C' = espejo(primero)
+    EXX
+    LD A, (DE)
+    EXX
+    LD L, A
+    LD A, (HL)                  ; A = espejo(ultimo)
+    EXX
+    LD (HL), A
+    EXX
+    LD A, C
+    EXX
+    LD (DE), A
+    INC HL
+    DEC DE
+    DJNZ .BUCLE_PAREJA
+.SIN_PAREJAS:
+    POP AF
+    JR NC, .SIGUIENTE_BLOQUE
+    LD A, (HL)                  ; byte central: solo espejo
+    EXX
+    LD L, A
+    LD A, (HL)
+    EXX
+    LD (HL), A
+.SIGUIENTE_BLOQUE:
+    POP HL
+    POP AF
+    DEC A
+    JR NZ, .BUCLE_BLOQUES
+    EXX
+    POP BC
+    POP HL
+    EXX
+    JP SALIR_MOTOR_ACTORES
+
+; --------------------------------------------------------------
+;  ELEGIR_VARIANTE_OPT: parche en MOTOR_ACTORES.CONTINUAR_TRAS_ELEGIR_
+;  DIRECCION (sustituye a AND $07 / EXX / LD C,A / EXX). Si el actor
+;  va con desplazamiento sub-pixel 6 hacia la derecha, usa
+;  DIBUJAR_FILA_DESPLAZADA_6 en vez del bucle de 6 pasos bit a bit.
+; --------------------------------------------------------------
+ELEGIR_VARIANTE_OPT:
+    AND $07
+    CP 6
+    JR NZ, .FIN
+    PUSH HL
+    PUSH IY
+    POP HL
+    LD A, L
+    CP LOW DIBUJAR_FILA_DESPLAZADA_DERECHA
+    JR NZ, .NO_ES_DERECHA
+    LD A, H
+    CP HIGH DIBUJAR_FILA_DESPLAZADA_DERECHA
+    JR NZ, .NO_ES_DERECHA
+    LD IY, DIBUJAR_FILA_DESPLAZADA_6
+.NO_ES_DERECHA:
+    POP HL
+    LD A, 6
+.FIN:
+    EXX
+    LD C, A
+    EXX
+    RET
+
+; --------------------------------------------------------------
+;  DIBUJAR_FILA_DESPLAZADA_6: como DIBUJAR_FILA_DESPLAZADA_DERECHA con
+;  desplazamiento 6, pero hecho como 2 pasos a la IZQUIERDA con un
+;  registro mas que recoge lo que sale por arriba (B' para el sprite,
+;  B para la mascara, que entra con unos). Resultado identico:
+;    sprite S0:S1:S2 (A, L', H')  -> S0>>6, S0<<2|S1>>6, S1<<2|S2>>6
+;    mascara M0:M1:M2 (E, D, C)   -> M0>>6|$FC, M0<<2|M1>>6, M1<<2|M2>>6
+;  2 pasos de ~90 ciclos en vez de 6 de ~89 por fila. Dos filas por
+;  entrada, como el original (la segunda se escribe de derecha a
+;  izquierda) y misma salida de bucle que MEZCLAR_Y_AVANZAR_FILA_ACTOR.
+; --------------------------------------------------------------
+DIBUJAR_FILA_DESPLAZADA_6:
+    CALL .DESPLAZAR_IZQUIERDA_2
+    LD C, A                     ; C = sprite byte 1
+    LD A, (HL)
+    AND B                       ; mascara byte 0
+    EXX
+    OR B                        ; sprite byte 0
+    EXX
+    LD (HL), A
+    INC L
+    LD A, (HL)
+    AND E
+    OR C
+    LD (HL), A
+    INC L
+    LD A, (HL)
+    AND D
+    EXX
+    OR L                        ; sprite byte 2
+    EXX
+    LD (HL), A
+    LD BC, 32
+    ADD HL, BC
+    DI                          ; siguiente fila del cursor, igual que el original
+    LD ($843A), SP
+    LD SP, ($843C)
+    POP DE
+    POP BC
+    EXX
+    POP HL
+    LD ($843C), SP
+    LD SP, ($843A)
+    EI
+    LD A, C
+    LD B, A
+    EXX
+    LD A, B
+    CALL .DESPLAZAR_IZQUIERDA_2
+    LD C, A
+    LD A, (HL)                  ; segunda fila: de derecha a izquierda
+    AND D
+    EXX
+    OR L
+    EXX
+    LD (HL), A
+    DEC L
+    LD A, (HL)
+    AND E
+    OR C
+    LD (HL), A
+    DEC L
+    LD A, (HL)
+    AND B
+    EXX
+    OR B
+    EXX
+    LD (HL), A
+    LD BC, 32
+    ADD HL, BC
+    EX AF, AF'
+    DEC A
+    JP NZ, MOTOR_ACTORES.BUCLE_DIBUJAR_ACTOR
+    JP SALIR_MOTOR_ACTORES
+
+; Entrada: A=S0, L'=S1, H'=S2, E=M0, D=M1, C=M2 (banco principal activo).
+; Salida: B'=sprite0, A=sprite1, L'=sprite2; B=mascara0, E=mascara1, D=mascara2.
+.DESPLAZAR_IZQUIERDA_2:
+    LD B, $FF
+    EXX
+    LD B, 0
+    SLA H
+    RL L
+    RLA
+    RL B
+    SLA H
+    RL L
+    RLA
+    RL B
+    EXX
+    SLA C
+    RL D
+    RL E
+    RL B
+    SLA C
+    RL D
+    RL E
+    RL B
+    RET
+
+; --------------------------------------------------------------
+;  TABLA_ESPEJO: byte con los bits en orden inverso (256 bytes,
+;  alineada a pagina).
+; --------------------------------------------------------------
+    ALIGN 256
+TABLA_ESPEJO:
+.V = 0
+    DUP 256
+    DB ((.V & 1) << 7) | ((.V & 2) << 5) | ((.V & 4) << 3) | ((.V & 8) << 1) | ((.V & 16) >> 1) | ((.V & 32) >> 3) | ((.V & 64) >> 5) | ((.V & 128) >> 7)
+.V = .V + 1
+    EDUP
 
 FIN_OPTIMIZACIONES:
     ASSERT FIN_OPTIMIZACIONES <= $8400

@@ -32,7 +32,7 @@ def main():
 
     S, T = [], collections.defaultdict(list)
     for l in open(fichero):
-        k, v = l.split()
+        k, v = l.split(None, 1)
         if k == "S":
             S.append(int(v))
         else:
