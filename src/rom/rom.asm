@@ -42,6 +42,8 @@ BUFFER      EQU $E800
 PILA        EQU $F300
 
 ENTRADA_JUEGO EQU $8400         ; START del motor
+TIC_FRAMES    EQU $6500         ; optimizaciones.asm: frames por tic del bucle principal
+JIFFY         EQU $FC9E
 ENTRADA_LOGO  EQU $9470         ; ENTRADA_LOGOTOPO
 
     OUTPUT "../../build/madmix_v9990.rom"
@@ -143,6 +145,10 @@ INICIO_ROM:
     CALL INIGRP
     DI
 
+    ; --- 50 o 60 Hz: fija el ritmo del juego (5 o 6 frames por tic) ---
+    CALL DETECTAR_FRECUENCIA
+    LD (TIC_DETECTADO), A
+
     ; --- logo de Topo Soft (version de cinta), con BIOS presente ---
     LD IX, TABLA_LOGO
     CALL COPIAR_FRAGMENTOS
@@ -152,6 +158,35 @@ INICIO_ROM:
 
     ; --- juego: a partir de aqui ya no hay BIOS ---
     JP ARRANCAR_JUEGO
+
+; --------------------------------------------------------------
+;  DETECTAR_FRECUENCIA: mide cuantas vueltas de un bucle fijo caben
+;  en 4 interrupciones del BIOS. 60 Hz: 4 frames = ~239 000 ciclos;
+;  50 Hz: ~286 000. Con 39 ciclos por vuelta salen ~6100 y ~7300
+;  vueltas (menos lo que tarde la ISR del BIOS); el corte esta en
+;  6700. No depende del byte $002B, que algunos MSX traen mal.
+;  Devuelve A = frames por tic: 6 (60 Hz) o 5 (50 Hz).
+; --------------------------------------------------------------
+DETECTAR_FRECUENCIA:
+    EI
+    HALT                        ; empieza justo tras una interrupcion
+    LD A, (JIFFY)
+    ADD A, 4
+    LD B, A
+    LD DE, 0
+.CONTAR:
+    INC DE                      ; 7
+    LD A, (JIFFY)               ; 14
+    CP B                        ; 5
+    JR NZ, .CONTAR              ; 13
+    DI
+    LD HL, 6700
+    AND A
+    SBC HL, DE                  ; CF=1 si DE > 6700 -> 50 Hz
+    LD A, 6
+    RET NC
+    DEC A
+    RET
 
 ; --------------------------------------------------------------
 ERROR_SIN_RAM:
@@ -180,6 +215,7 @@ CARGADOR_ORIGEN:
 
 SLOT_ROM:   DB 0
 SLOT_RAM:   DB 0
+TIC_DETECTADO: DB 6
 
 ; --------------------------------------------------------------
 ;  PONER_SLOT: conmuta la pagina B (0-2) al slot A (formato
@@ -373,6 +409,10 @@ ARRANCAR_JUEGO:
     LD A, (SLOT_RAM)
     LD B, 1
     CALL PONER_SLOT
+    ; con la pagina 1 ya en RAM: escribir en $6500 con la ROM visible
+    ; seleccionaria un banco del mapper ASCII16 en vez de llegar a la RAM
+    LD A, (TIC_DETECTADO)
+    LD (TIC_FRAMES), A
     JP ENTRADA_JUEGO
 
 ; --------------------------------------------------------------

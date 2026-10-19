@@ -903,8 +903,11 @@ ENTRADA_INTERRUPCION_VBLANK:
 ; (vacia la cola de redibujado diferido, ver mas abajo). La nota
 ; anterior de "0xC4A0 x3" era incorrecta.
 GESTIONAR_FRAME:
-    LD     A,$0F                   ; parametro sin efecto: FUNCION_INHABIL es solo RET, se descarta
-    CALL   FUNCION_INHABIL
+    ; PROYECTO (optimizacion): la ISR ya no hace el trabajo de frame, solo
+    ; cuenta el frame (optimizaciones.asm). Original: LD A,$0F / CALL FUNCION_INHABIL
+    JP     GESTIONAR_FRAME_OPT
+    NOP
+    NOP
     LD     A,(FRAME_FLAG)
     LD     B,A
     XOR    A
@@ -979,8 +982,10 @@ BUFFER_LOSETAS_TRABAJO:     EQU $DE04  ; RAM del Z80 (NO VRAM) -- buffer de trab
 ; prepara BUFFER_LOSETAS_TRABAJO; es esta funcion
 ; quien copia ese buffer a la VRAM real, una vez por frame.
 ACTUALIZAR_VRAM_FRAME:
-    DI
-    LD     HL,FLAG_NIVEL_RECIEN_CARGADO
+    ; PROYECTO (optimizacion): sustituida por ACTUALIZAR_VRAM_FRAME_OPT; el
+    ; resto de esta rutina queda como referencia. Original: DI / LD HL,FLAG_NIVEL_RECIEN_CARGADO
+    JP     ACTUALIZAR_VRAM_FRAME_OPT
+    NOP
     LD     A,(HL)
     LD     (HL),0
     AND    A
@@ -1208,8 +1213,11 @@ RESET_CONTADOR_ACTORES:
 ;  ESPERA DE INTERRUPCION  (0x89A0 original, confirmado)
 ; --------------------------------------------------------------
 WAIT_VBLANK:
-    LD A, 1
-    LD (FRAME_FLAG), A     ; arma el semaforo (vuelve a 0 cuando GESTIONAR_FRAME procesa el frame, ver mas abajo)
+    ; PROYECTO (optimizacion): el trabajo de frame se hace ahora en
+    ; WAIT_VBLANK_OPT, fuera de la ISR. Original: LD A,1 / LD (FRAME_FLAG),A
+    JP     WAIT_VBLANK_OPT
+    NOP
+    NOP
     EI
 .wait:
     LD A, (FRAME_FLAG)
@@ -2686,7 +2694,7 @@ MOSTRAR_READY_Y_ARRANCAR_NIVEL:
 ; reinicia via REINICIAR_PARTIDA). ---
 BUCLE_PRINCIPAL_JUEGO:
     CALL   ENLACE_MOTOR_MOVIMIENTO_COLISION                ; RESUELTO: JR MOTOR_MOVIMIENTO_COLISION (misma llamada que en BUSCAR_COLUMNA_HUD)
-    CALL   WAIT_VBLANK
+    CALL   ESPERAR_TIC          ; PROYECTO (optimizacion): tic a ritmo fijo. Original: CALL WAIT_VBLANK
     LD     HL,MODO_ESPECIAL_ACTIVO
     LD     A,(HL)
     AND    A

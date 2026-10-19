@@ -6,6 +6,7 @@
 ;  tramo a un binario plano que luego empaqueta la ROM:
 ;
 ;    build/ram_1000.bin   $1000-$64FF  (cuerpo de MADMIX.SCR)
+;    build/ram_6500.bin   $6500-...    (codigo nuevo: optimizaciones.asm)
 ;    build/ram_8400.bin   $8400-$DDA0  (motor, MADMIX1.BIN)
 ;    build/logotopo.bin   $9470-...    (logo animado de Topo, cinta)
 ;
@@ -27,8 +28,13 @@ FIN_MOTOR:
 
     ORG $1000
     INCLUDE "madmix_scr_body.asm"
+    ASSERT $ <= $6500           ; el cuerpo de MADMIX.SCR no invade el codigo nuevo
+
+    ORG $6500
+    INCLUDE "optimizaciones.asm"
 
     SAVEBIN "../../build/ram_1000.bin", $1000, $5500
+    SAVEBIN "../../build/ram_6500.bin", $6500, FIN_OPTIMIZACIONES-$6500
     SAVEBIN "../../build/ram_8400.bin", START, FIN_MOTOR-START
 
     ; El logo se ensambla al final porque comparte direcciones con el

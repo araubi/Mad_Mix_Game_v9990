@@ -76,3 +76,27 @@ En el V9990 desaparecen el volcado, el scroll por software y el dibujado
 de actores: más o menos el 70 % de la CPU actual. Los puntos 1 y 2 valen
 igual para esa versión, porque la ISR no debe tardar más de un frame y
 el tic tiene que ser fijo.
+
+## Resultado de la versión optimizada
+
+Aplicadas las tres mejoras en `src/juego/optimizaciones.asm` (código
+nuevo en `$6500-$6971`) más 4 parches del mismo tamaño en el motor, de
+modo que ninguna etiqueta del original cambia de dirección. El
+cargador mide la frecuencia (no se fía de `$002B`) y fija 5 frames por
+tic a 50 Hz y 6 a 60 Hz.
+
+| | Original 60 Hz | Optimizada 60 Hz | Original 50 Hz | Optimizada 50 Hz |
+|---|---|---|---|---|
+| Interrupciones perdidas | 35 % | **0 %** | 38 % | **0 %** |
+| Frames por tic | 4–10 | **6 en el 88 %**, 7–8 resto | 3–7 | **5 en el 90 %**, 6–7 resto |
+| `ACTUALIZAR_VRAM_FRAME` | 163 000 ciclos | 124 000 (incluye la ISR que ahora entra entre filas) | 156 000 | 125 000 |
+| Accesos a VRAM demasiado rápidos (openMSX, modo `real`) | — | 0 | — | 0 |
+
+Las dos máquinas juegan igual: a los mismos segundos de partida el
+comecocos está en la misma posición y con la misma puntuación.
+
+**Pendiente (opcional):** alrededor del 10 % de los tics se pasan un
+frame. Son los que combinan scroll y volcado completo. El scroll ya
+está desenrollado (`RLD`/`LDI`); bajar de ahí exigiría convertir
+`BUFFER_LOSETAS_TRABAJO` en un buffer circular para no copiarlo en cada
+paso. Ese cambio toca el volcado y el dibujado de actores.

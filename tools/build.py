@@ -26,7 +26,8 @@ FRAG = 0x800
 # (nombre de tabla, [(fichero, direccion destino)])
 TABLAS = [
     ("TABLA_LOGO", [("logotopo.bin", 0x9470)]),
-    ("TABLA_JUEGO", [("ram_1000.bin", 0x1000), ("ram_8400.bin", 0x8400)]),
+    ("TABLA_JUEGO", [("ram_1000.bin", 0x1000), ("ram_6500.bin", 0x6500),
+                     ("ram_8400.bin", 0x8400)]),
 ]
 
 

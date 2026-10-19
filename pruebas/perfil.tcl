@@ -19,12 +19,18 @@ proc muestra {} {
   after time 0.00025 muestra
 }
 proc marca {tag} { if {$::perf_on} { puts $::perf_f "$tag [machine_info time]" } }
-debug set_bp 0x9078 {} {marca L}
-debug set_bp 0x882A {} {marca I}
-debug set_bp 0x89A0 {} {marca W}
-debug set_bp 0x8891 {} {marca V}
-debug set_bp 0x88CB {} {marca C}
-debug set_bp 0x8930 {} {marca E}
-debug set_bp 0x8882 {} {marca g}
+# marcas: PERF_BP="L:0x9078 I:0x882A ..." (por defecto, las de la version F0)
+set bps "L:0x9078 I:0x882A W:0x89A0 V:0x8891 C:0x88CB E:0x8930 g:0x8882"
+if {[info exists ::env(PERF_BP)] && $::env(PERF_BP) ne ""} { set bps $::env(PERF_BP) }
+foreach bp $bps {
+  lassign [split $bp :] tag addr
+  debug set_bp $addr {} [list marca $tag]
+}
+# accesos a VRAM demasiado rapidos para el TMS9918 (como en el hardware real)
+set too_fast_vram_access real
+proc vram_rapida {args} { marca R }
+set VDP.too_fast_vram_access_callback vram_rapida
+# escrituras en la zona $6503-$83FF, que debe seguir libre
+debug set_watchpoint write_mem {0x6503 0x83FF} {} {marca X}
 after time 26 { set ::perf_on 1; muestra }
 after time 56 { set ::perf_on 0; close $::perf_f }
