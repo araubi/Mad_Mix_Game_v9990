@@ -426,5 +426,14 @@ CARGADOR_FIN:
 ; --------------------------------------------------------------
 ;  Relleno del banco 0
 ; --------------------------------------------------------------
+    ; Marca para emuladores (nunca se ejecuta): la deteccion automatica
+    ; de openMSX cuenta las instrucciones LD (nn),A a direcciones de
+    ; registros de mapper. Las 2 escrituras reales a $6000 empatan entre
+    ; Konami y ASCII16 y gana Konami; LD ($77FF),A solo cuenta para
+    ; ASCII16. No afecta a cartuchos reales.
+MARCA_ASCII16:
+    DUP 4
+    LD ($77FF), A
+    EDUP
     DS $8000 - $, $FF
     ; build.py anade a continuacion build/carga_util.bin (bancos 1..n)
