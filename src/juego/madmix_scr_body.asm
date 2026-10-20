@@ -3144,7 +3144,8 @@ INICIALIZAR_PARCIAL_ITEMS_NIVEL:                     ; $58F8 -- segundo punto de
 ; ($2C02) desde los offsets 15-16. Ver FINDINGS.md para el detalle
 ; completo de los 13 bytes de metadatos del registro. ---
 CARGAR_NIVEL:
-    LD A, (NIVEL_ACTUAL)          ; numero de nivel actual (1-15, el 0 esta muerto -- RESUELTO:
+    CALL V9_CARGAR_NIVEL          ; PROYECTO V9990: avisa al V9990 y hace LD A,(NIVEL_ACTUAL). Original: LD A,(NIVEL_ACTUAL)
+                                  ; numero de nivel actual (1-15, el 0 esta muerto -- RESUELTO:
                                     ; el 15 SI se alcanza en partida normal, es el nivel oculto,
                                     ; ver el registro 15 de TABLA_NIVELES mas abajo)
     LD HL, TABLA_NIVELES

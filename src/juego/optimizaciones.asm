@@ -66,6 +66,7 @@ WAIT_VBLANK_OPT:
     PUSH IX
     PUSH IY
     CALL ACTUALIZAR_VRAM_FRAME_OPT
+    CALL V9_TIC                 ; V9990: losetas cambiadas y scroll (v9990.asm)
     DI                          ; el resto, como en la ISR original
     CALL CONTINUAR_CAPTURA_MASCARAS_ACTORES
     CALL RESET_CONTADOR_ACTORES

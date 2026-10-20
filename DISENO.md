@@ -67,7 +67,7 @@ buffer en `$E800`, deja las 4 páginas en RAM y salta a `START`
 | **F0** | ROM del juego original (TMS9918) con el cargador definitivo y los fixes de Pazos — referencia para comparar | hecha y probada en openMSX (C-BIOS MSX1): logo, portada, menú y partida |
 | **F0b** | Juego base optimizado (MSX1, TMS9918): volcado fuera de la ISR, tic fijo de 5/6 frames, sin el `LDIR` de relleno, volcado desenrollado — ver `ANALISIS_RENDIMIENTO.md` | hecha y medida en openMSX a 50 y 60 Hz |
 | **F0c** | F0b + espejo de actores con tabla, desplazamiento sub-píxel 6 en 2 pasos, paso fijo con recuperación de un frame; pruebas deterministas (`--pruebas`, huellas por tic) | hecha; idéntica píxel a píxel a f0b en la demo |
-| **F1** | Detección e inicialización del V9990 en P1, paleta, conversión de las 91 losetas a patrones de 4 bpp, laberinto en la capa B y scroll por hardware enganchado a la cámara | — |
+| **F1** | Detección e inicialización del V9990 en P1, paleta, conversión de las 91 losetas a patrones de 4 bpp, laberinto en la capa B y scroll por hardware enganchado a la cámara | hecha (`v9990.asm`); probada en openMSX con GFX9000 a 50 y 60 Hz, ver §6 |
 | **F2** | Actores como sprites (64 patrones fuente + versiones volteadas); retirar `MOTOR_ACTORES` y el volcado por frame | — |
 | **F3** | Capa A: marco de caramelo, marcador, vidas, icono de nivel, destellos del HUD | — |
 | **F4** | Portada, menú, créditos, presentación de nivel y Game Over en el V9990 | — |
@@ -79,14 +79,70 @@ openMSX, cambiando de fuente de vídeo).
 
 ## 5. Pendiente de confirmar
 
-- Mapa exacto de VRAM del modo P1 (tablas de nombres, atributos y
-  generador de sprites): se fijará contra el manual del V9990 y se
-  verificará en openMSX antes de escribir F1.
-- Conversión de coordenadas: cámara y actores del original (columna
-  4-116 de la ventana, pasos de 4 px) a scroll y posición de sprite
-  del V9990.
+- Conversión de coordenadas de los actores (columna 4-116 de la
+  ventana) a posición de sprite del V9990 (F2). La del laberinto ya
+  está resuelta (§6).
 - Si `COMPONER_ACTORES_EN_BUFFER` y el cursor de `$0500` tienen otros
   usuarios fuera del dibujado de actores, antes de retirarlos.
 - Si `REINICIO_SLOT_DD82`/`REUBICADOR_REINICIO_JUEGO` (conmutan slots
   con un valor fijo `$55`) se usan alguna vez: con la ROM no deben
   ejecutarse.
+
+## 6. F1: el laberinto en el V9990 (`src/juego/v9990.asm`)
+
+**Arranque.** El cargador llama a `V9_INICIAR` (`$6C00`) con el juego
+ya en RAM. Si R#15 del V9990 no se puede leer y escribir no hay
+GFX9000 y no se hace nada más: el juego es idéntico a f0c. Si lo hay:
+reinicio, modo P1 (R#6 = `$05`, R#7 = PAL si la máquina va a 50 Hz),
+paleta 0-15 con los colores del TMS9918, y conversión de las 91
+losetas.
+
+**VRAM (direcciones del modo P1):**
+
+| Zona | Uso |
+|---|---|
+| `$00000` | generador de la capa A: patrón 0 transparente, patrón 1 negro |
+| `$40000` | generador de la capa B: la loseta t a 4 bpp en x = (t mod 16)·16, y = (t div 16)·16 de un mapa de 256 px de ancho (patrones p, p+1, p+32, p+33 con p = (t div 16)·64 + (t mod 16)·2) |
+| `$7C000` | nombres de la capa A: máscara negra fuera de la ventana de 24×18 caracteres en (32,24) |
+| `$7E000` | nombres de la capa B: la matriz entera, loseta (r,c) en `$7E000 + r·256 + c·4` |
+
+**Colores.** Los píxeles de las losetas valen 1 (fondo) y 2 (tinta);
+la capa B usa el desplazamiento de paleta 16, así que son las
+entradas 17 y 18, que `V9_TIC` carga con el color que el juego pinta
+en la ventana del TMS (`CONSULTAR_COLOR_VDP` de
+`REGISTRO_NIVEL_ICONO_HUD`). Se usan los colores del TMS9918 tal cual
+(tabla clásica de TI); el rediseño de colores queda para F5.
+
+**Losetas que cambian.** `SOMBRA_MATRIZ` (`$7C50`, la matriz − `$8000`)
+guarda lo que ya hay en la capa B. En cada tic, `V9_TIC` (llamado desde
+`WAIT_VBLANK_OPT`, tras el volcado al TMS) compara la zona visible
+(10 filas × 13 columnas) y una fila más en rotación, y escribe en la
+VRAM solo las losetas distintas. `CARGAR_NIVEL` avisa con un parche
+del mismo tamaño (`V9_CARGAR_NIVEL`) y el tic siguiente compara la
+matriz entera. Así no hace falta localizar cada sitio del juego que
+cambia una loseta (bolitas, bola de poder, mariquita...).
+
+**Scroll.** La esquina de la ventana del TMS es el píxel
+(L·4, H·4) del laberinto, con (L, H) = `REGISTRO_NIVEL_POSICION_COMECOCOS`
+(comprobado en 175 tics de la demo contra `BUFFER_LOSETAS_TRABAJO`, sin
+ninguna excepción). El scroll de la capa B es esa esquina menos (32,24).
+Se escribe en la interrupción de fin de pantalla del propio V9990
+(`V9_ISR`, instalada en `$0038` delante de la del juego): si se escribe
+el scroll vertical con la imagen en curso, el V9990 parte la pantalla
+por esa línea.
+
+**Coste.** `V9_TIC` tarda ~0,19 frames por tic (mediana; 8 frames el
+tic en que se carga un nivel). En la demo a 50 Hz salen un 3 % menos
+de tics por segundo que en f0c, porque la pantalla del TMS sigue
+funcionando entera. En F2 desaparecen el volcado y los actores del TMS
+cuando hay V9990, y eso sobra para compensarlo.
+
+**Verificación (openMSX, C-BIOS MSX1 a 60 Hz y MSX1 EU a 50 Hz):**
+- Sin GFX9000, la demo determinista (`--pruebas`) es idéntica a f0c
+  tic a tic: variables, matriz y buffer.
+- Con GFX9000, el estado del juego también es idéntico tic a tic
+  (solo arranca unos tics más tarde).
+- La capa B coincide con la matriz en todas las muestras (como mucho
+  4 losetas pendientes, las que cambian ese mismo tic).
+- Capturas de las dos salidas: el contenido de la ventana coincide
+  píxel a píxel salvo los actores, que llegan en F2.

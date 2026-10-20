@@ -826,7 +826,7 @@ TABLA_MASCARA_RECORTE_BORDE:
 ; NO empieza con DI.
 ACTIVAR_INTERRUPCION_MODO_1:
     LD     A,$C3
-    LD     HL,$882A
+    LD     HL,V9_ISR              ; PROYECTO V9990: V9_ISR atiende antes la interrupcion del V9990. Original: LD HL,$882A (ENTRADA_INTERRUPCION_VBLANK)
     LD     ($0038),A
     LD     ($0039),HL
     IM     1

@@ -43,6 +43,7 @@ PILA        EQU $F300
 
 ENTRADA_JUEGO EQU $8400         ; START del motor
 TIC_FRAMES    EQU $6500         ; optimizaciones.asm: frames por tic del bucle principal
+V9_INICIAR    EQU $6C00         ; v9990.asm: detecta e inicia el V9990 (GFX9000)
 JIFFY         EQU $FC9E
 ENTRADA_LOGO  EQU $9470         ; ENTRADA_LOGOTOPO
 
@@ -413,6 +414,7 @@ ARRANCAR_JUEGO:
     ; seleccionaria un banco del mapper ASCII16 en vez de llegar a la RAM
     LD A, (TIC_DETECTADO)
     LD (TIC_FRAMES), A
+    CALL V9_INICIAR             ; si hay GFX9000: modo P1 y losetas del laberinto
     JP ENTRADA_JUEGO
 
 ; --------------------------------------------------------------

@@ -5,6 +5,7 @@
 #   videosource: MSX | GFX9000 | Video9000 (default: openMSX default = Video9000)
 #   romtype:     e.g. ASCII16, ASCII8, Konami, KonamiSCC, Mirrored, Normal ...
 # Env: MSX_MACHINE (default C-BIOS_MSX1), MSX_EXTRA_ARGS (extra openmsx args),
+#      MSX_SIN_GFX9000=1 (no GFX9000 cartridge),
 #      MSX_SHOTS="t1 t2 ..." extra screenshots at those times (<out>_<t>.png),
 #      MSX_TCL=file  extra Tcl sourced at startup (e.g. key presses).
 set -euo pipefail
@@ -12,9 +13,9 @@ if [ $# -lt 3 ]; then
   sed -n '2,10p' "$0"; exit 1
 fi
 ROM=$(readlink -f "$1"); SECS=$2; OUT=$(readlink -m "$3"); VS=${4:-}; RT=${5:-}
-OPENMSX=/home/claude/local/bin/openmsx
+OPENMSX=${OPENMSX:-$(command -v openmsx || echo /opt/openMSX/bin/openmsx)}
 MACHINE=${MSX_MACHINE:-C-BIOS_MSX1}
-export LD_LIBRARY_PATH=/home/claude/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
+[ -d /home/claude/local/lib ] && export LD_LIBRARY_PATH=/home/claude/local/lib${LD_LIBRARY_PATH:+:$LD_LIBRARY_PATH}
 export LIBGL_ALWAYS_SOFTWARE=1
 TMP=$(mktemp -d); trap 'rm -rf "$TMP"' EXIT
 # private home so persistent settings don't leak between runs
@@ -50,10 +51,11 @@ rm -f "$OUT"
 } > "$TMP/shot.tcl"
 
 ROMARGS=(-carta "$ROM")
+EXT=(-ext gfx9000); [ -n "${MSX_SIN_GFX9000:-}" ] && EXT=()
 [ -n "$RT" ] && ROMARGS+=(-romtype "$RT")
 
 timeout 300 xvfb-run -a -s "-screen 0 1024x768x24 +extension GLX" \
-  "$OPENMSX" -machine "$MACHINE" -ext gfx9000 "${ROMARGS[@]}" \
+  "$OPENMSX" -machine "$MACHINE" "${EXT[@]}" "${ROMARGS[@]}" \
   ${MSX_EXTRA_ARGS:-} -script "$TMP/shot.tcl" > "$TMP/log" 2>&1 || true
 grep -v "dsp: No such audio device" "$TMP/log" | grep -E "msxshot|rror|arning" >&2 || true
 if [ -f "$OUT" ]; then
