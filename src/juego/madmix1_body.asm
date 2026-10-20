@@ -2365,12 +2365,15 @@ COMPROBAR_TECLA_MSX:                            ; IX+0=numero de fila/puerto, IX
 ; controles reales del juego son Q=arriba, A=abajo, O=izquierda,
 ; P=derecha, ESPACIO=disparo. Eso fija la accion real de cada offset
 ; (antes decia arriba/abajo/izquierda/derecha/disparo en ese orden).
+; PROYECTO: teclas por defecto cambiadas a cursores + ESPACIO (fila 8:
+; bit 4 izquierda, 5 arriba, 6 abajo, 7 derecha). Original: Q/A/O/P.
+; La opcion de redefinir teclas sigue escribiendo en esta tabla.
 TABLA_TECLAS_MSX:
     DB $F8,$01                 ; offset 0: disparo (tecla ESPACIO)
-    DB $F4,$40                 ; offset 2: arriba (tecla Q)
-    DB $F2,$40                 ; offset 4: abajo (tecla A)
-    DB $F4,$10                 ; offset 6: izquierda (tecla O)
-    DB $F4,$20                 ; offset 8: derecha (tecla P)
+    DB $F8,$20                 ; offset 2: arriba (cursor arriba)
+    DB $F8,$40                 ; offset 4: abajo (cursor abajo)
+    DB $F8,$10                 ; offset 6: izquierda (cursor izquierda)
+    DB $F8,$80                 ; offset 8: derecha (cursor derecha)
     DB $F3,$20                 ; offset 10: pausa (COMPROBAR_PAUSA)
 LEER_JOYSTICK:
     LD     A,$07
