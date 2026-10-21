@@ -180,6 +180,15 @@ Detalle completo en `DISENO.md` §6 del repositorio.
   el V9990 queda en negro hasta el primer nivel y después muestra el
   último laberinto (F4).
 
+## F2 hecha: versión completa en el V9990 (2026-10-21)
+ROM `madmix_v9990_f2.rom` (256 KB ASCII16, openMSX la detecta sola), en
+`madmix_f2.zip`; repo con tag `f2`. Con GFX9000: laberinto con las losetas
+y paletas del grafista en las 15 fases, actores como sprites, marco,
+marcador y portada nuevos, textos FASE/READY?/ESTÁS FRITO, y menús copiados
+de la pantalla del TMS. Sin GFX9000: idéntica a f1c. Probada en openMSX
+(C-BIOS MSX1 y MSX2) hasta el fin de partida; falta máquina real y que
+Rubén la vea. Diseño en DISENO.md §7.
+
 ## Plan del port al V9990
 
 | Fase | Contenido |
