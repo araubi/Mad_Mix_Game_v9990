@@ -42,6 +42,7 @@ pasa a ser escribir 4 entradas de la tabla de nombres de la capa B.
 | `$0000-$0FFF` | RAM baja (`$0038` = ISR del juego, `$0500` = cursor de máscaras de actores, que desaparece con los sprites) |
 | `$1000-$64FF` | cuerpo de `MADMIX.SCR` (portada, colisión, ítems, niveles, menú) |
 | `$6500-$83FF` | libre en el original (~7,9 KB); `$6500-$6BFF` = `optimizaciones.asm`, el resto para el código del V9990 |
+| `$7FF0-$83B0` | filas traspuestas del volcado (`TRASPUESTA`, 5 × 192 bytes, solo en ejecución) |
 | `$8400-$DDA0` | motor (`MADMIX1.BIN`) |
 | `$DE04-...` | `BUFFER_LOSETAS_TRABAJO` — innecesario con el V9990, queda libre |
 | `$F2FF` hacia abajo | pila (Pazos) |
@@ -67,6 +68,7 @@ buffer en `$E800`, deja las 4 páginas en RAM y salta a `START`
 | **F0** | ROM del juego original (TMS9918) con el cargador definitivo y los fixes de Pazos — referencia para comparar | hecha y probada en openMSX (C-BIOS MSX1): logo, portada, menú y partida |
 | **F0b** | Juego base optimizado (MSX1, TMS9918): volcado fuera de la ISR, tic fijo de 5/6 frames, sin el `LDIR` de relleno, volcado desenrollado — ver `ANALISIS_RENDIMIENTO.md` | hecha y medida en openMSX a 50 y 60 Hz |
 | **F0c** | F0b + espejo de actores con tabla, desplazamiento sub-píxel 6 en 2 pasos, paso fijo con recuperación de un frame; pruebas deterministas (`--pruebas`, huellas por tic) | hecha; idéntica píxel a píxel a f0b en la demo |
+| **f0e / f1c** | Volcado sincronizado con el haz (`volcado_haz.asm`): cada fila se escribe detrás del haz (marca con el indicador de quinto sprite), las filas que caen en el borde se trasponen antes y van con OUTI, la música se aplaza al final del volcado. Quita el corte que se veía al hacer scroll | hecha; demo idéntica tic a tic a f0d/f1b; sin cortes a 50 Hz, a 60 Hz las 4 últimas filas van un frame tarde |
 | **F1** | Detección e inicialización del V9990 en P1, paleta, conversión de las 91 losetas a patrones de 4 bpp, laberinto en la capa B y scroll por hardware enganchado a la cámara | hecha (`v9990.asm`); probada en openMSX con GFX9000 a 50 y 60 Hz, ver §6 |
 | **F2** | Actores como sprites (64 patrones fuente + versiones volteadas); retirar `MOTOR_ACTORES` y el volcado por frame | — |
 | **F3** | Capa A: marco de caramelo, marcador, vidas, icono de nivel, destellos del HUD | — |
