@@ -855,6 +855,7 @@ ENTRADA_INTERRUPCION_VBLANK:
     IN     A,($99)
     AND    A
     JP     P,.NO_ES_IRQ_VBLANK
+.ATENDER:                          ; PROYECTO: entrada para un VBLANK leido fuera de la ISR (ATENDER_VBLANK_ROBADO, volcado_haz.asm)
     PUSH   HL
     PUSH   DE
     PUSH   BC
@@ -867,7 +868,7 @@ ENTRADA_INTERRUPCION_VBLANK:
     PUSH   IX
     PUSH   IY
     CALL   GESTIONAR_FRAME
-    CALL   DESPACHAR_EFECTO_SONIDO
+    CALL   DESPACHAR_SONIDO_OPT    ; PROYECTO: durante el volcado la musica se aplaza (volcado_haz.asm). Original: CALL DESPACHAR_EFECTO_SONIDO
     POP    IY
     POP    IX
     POP    BC

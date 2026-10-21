@@ -33,6 +33,7 @@ FIN_MOTOR:
     ORG $6500
     INCLUDE "optimizaciones.asm"
     INCLUDE "v9990.asm"         ; ORG $6C00
+    INCLUDE "volcado_haz.asm"   ; a continuacion
 
     ; Compilacion de pruebas (tools/build.py --pruebas): GENERAR_ALEATORIO
     ; usa la semilla en vez del registro R, cuyo valor depende de cuantas
@@ -45,7 +46,7 @@ FIN_MOTOR:
     ENDIF
 
     SAVEBIN "../../build/ram_1000.bin", $1000, $5500
-    SAVEBIN "../../build/ram_6500.bin", $6500, FIN_V9990-$6500
+    SAVEBIN "../../build/ram_6500.bin", $6500, FIN_VOLCADO_HAZ-$6500
     SAVEBIN "../../build/ram_8400.bin", START, FIN_MOTOR-START
 
     ; El logo se ensambla al final porque comparte direcciones con el

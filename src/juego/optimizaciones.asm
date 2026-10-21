@@ -53,7 +53,12 @@ WAIT_VBLANK_OPT:
 .ESPERAR_FLANCO:
     CP (HL)
     JR Z, .ESPERAR_FLANCO
-    LD A, (HL)
+    POP HL
+; Entrada con el VBLANK ya atendido (ESPERAR_TIC la usa si el haz
+; aun no ha llegado a la ventana en este frame).
+VOLCAR_TRAS_FLANCO:
+    PUSH HL
+    LD A, (CONTADOR_FRAMES)
     LD (ULTIMO_FLANCO), A
     PUSH DE
     PUSH BC
@@ -65,7 +70,7 @@ WAIT_VBLANK_OPT:
     PUSH BC
     PUSH IX
     PUSH IY
-    CALL ACTUALIZAR_VRAM_FRAME_OPT
+    CALL VOLCADO_HAZ            ; volcado sincronizado con el haz (volcado_haz.asm)
     CALL V9_TIC                 ; V9990: losetas cambiadas y scroll (v9990.asm)
     DI                          ; el resto, como en la ISR original
     CALL CONTINUAR_CAPTURA_MASCARAS_ACTORES
@@ -101,9 +106,18 @@ ESPERAR_TIC:
     PUSH HL
     PUSH BC
     LD HL, CONTADOR_FRAMES
+    LD A, (OBJETIVO_TIC)
+    SUB (HL)
+    DEC A                       ; d - 1
+    LD B, A
+    LD A, (TIC_FRAMES)
+    DEC A
+    CP B
+    CALL NC, TRASPONER_ANTES    ; 1 <= d <= TIC_FRAMES: sobra tiempo antes del VBLANK
 .ESPERAR:
     LD A, (OBJETIVO_TIC)
     SUB (HL)                    ; d = frames que faltan hasta el objetivo
+    JR Z, .EN_OBJETIVO
     CP 2
     JR C, .LISTO                ; d <= 1 (o ya pasado): toca volcar en el siguiente VBLANK
     LD B, A
@@ -115,6 +129,7 @@ ESPERAR_TIC:
     POP BC
     POP HL
     CALL WAIT_VBLANK_OPT        ; vuelca; ULTIMO_FLANCO = VBLANK real del volcado
+.VOLCADO_HECHO:
     PUSH HL
     LD HL, OBJETIVO_TIC
     LD A, (ULTIMO_FLANCO)
@@ -131,6 +146,15 @@ ESPERAR_TIC:
     POP HL
     XOR A
     RET
+.EN_OBJETIVO:
+    ; El VBLANK objetivo ya ha pasado. Si el haz aun no ha llegado a la
+    ; ventana, el volcado sincronizado todavia cabe en este frame.
+    CALL HAZ_PASADO
+    JR NZ, .LISTO               ; ya paso: al siguiente VBLANK, como antes
+    POP BC
+    POP HL
+    CALL VOLCAR_TRAS_FLANCO
+    JR .VOLCADO_HECHO
 
 OBJETIVO_TIC: DB 0
 
@@ -142,6 +166,15 @@ OBJETIVO_TIC: DB 0
 ;  aunque reescriba el registro 1 del VDP.
 ; --------------------------------------------------------------
 ACTUALIZAR_VRAM_FRAME_OPT:
+    CALL ACTUALIZAR_COLORES_OPT
+    JR VOLCAR_BUFFER_SIN_SINCRONIZAR
+
+; --------------------------------------------------------------
+;  ACTUALIZAR_COLORES_OPT: primera parte del trabajo de frame
+;  (icono del HUD y colores del destello). La usa tambien el
+;  volcado sincronizado con el haz (volcado_haz.asm).
+; --------------------------------------------------------------
+ACTUALIZAR_COLORES_OPT:
     DI
     LD HL, FLAG_NIVEL_RECIEN_CARGADO
     LD A, (HL)
@@ -173,8 +206,9 @@ ACTUALIZAR_VRAM_FRAME_OPT:
     CALL FILVRM
     LD HL, ZONA_COLOR_VRAM_DESTELLO_B
     LD BC, 16
-    CALL FILVRM
+    JP FILVRM
 
+VOLCAR_BUFFER_SIN_SINCRONIZAR:
     LD HL, BUFFER_LOSETAS_TRABAJO
     LD DE, ZONA_PATRON_VRAM_LABERINTO
     LD B, 18                    ; 18 filas de caracteres
