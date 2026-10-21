@@ -8,8 +8,8 @@
 ; patrones VRAM, reconstruye el color desde el formato comprimido a
 ; nibble (ver BUCLE_DESCOMPRIMIR_COLOR_PORTADA mas abajo) y enciende pantalla. ---
 DIBUJAR_PORTADA:
-    DI
-    CALL APAGAR_PANTALLA_VDP         ; $10BC
+    CALL V9_PORTADA                  ; PROYECTO V9990: modo portada y DI / CALL APAGAR_PANTALLA_VDP ($10BC)
+    NOP
     LD HL, $1800                ; tabla de nombres (VRAM)
     LD A, L
     OUT ($99), A                 ; byte bajo de la direccion VRAM
@@ -3487,7 +3487,7 @@ GESTIONAR_INTRODUCCION:                          ; $5AE9
     LDIR                          ; copia el bloque $4000 sobre si mismo (sin efecto real) -- solo quema tiempo
     POP BC
     XOR A
-    CALL COMPROBAR_PULSACION
+    CALL V9_PULSACION         ; PROYECTO V9990: paso del espejo. Original: CALL COMPROBAR_PULSACION
     JR NZ, .COMPROBAR_TRUCO_VIDAS_INFINITAS
     DJNZ .BUCLE_ESPERA_INTRO
     CALL DIBUJAR_PORTADA          ; = $1000 (reubicada, ver cabecera de DIBUJAR_PORTADA)
@@ -3504,7 +3504,7 @@ GESTIONAR_INTRODUCCION:                          ; $5AE9
     LD BC, 10000                  ; 10000 frames de timeout antes de volver a la intro
 .BUCLE_ESPERA_TIMEOUT:
     PUSH BC
-    CALL COMPROBAR_PULSACION
+    CALL V9_PULSACION         ; PROYECTO V9990: paso del espejo. Original: CALL COMPROBAR_PULSACION
     POP BC
     JR NZ, .CONTINUAR_INTRO
     DEC BC
@@ -3587,7 +3587,7 @@ ACTUALIZAR_MENU_PRINCIPAL:
 ; flujo de menu/demo -- este buffer se reutiliza entre menu y
 ; partida real, no es exclusivo del nivel activo. ---
 RELLENAR_SOLIDO_AREA_JUEGO_BUFFER_VRAM:                       ; $5B8C
-    LD DE, BUFFER_LOSETAS_TRABAJO
+    CALL V9_RELLENAR             ; PROYECTO V9990: ventana en negro tambien en el V9990. Original: LD DE,BUFFER_LOSETAS_TRABAJO
     LD B, 144                    ; 144 filas del buffer
 .BUCLE_RELLENAR_FILA:
     PUSH BC
@@ -3759,7 +3759,7 @@ TABLA_TECLAS_MENU_PRINCIPAL:
 ACUMULADOR_TECLAS_MENU:                ; $5C9F
     NOP
 LIMPIAR_VRAM_AREA_JUEGO:                      ; $5CA0
-    CALL RELLENAR_SOLIDO_AREA_JUEGO_BUFFER_VRAM
+    CALL V9_LIMPIAR              ; PROYECTO V9990: modo espejo. Original: CALL RELLENAR_SOLIDO_AREA_JUEGO_BUFFER_VRAM
     LD HL, $2000               ; tabla de patrones de VRAM (inicio)
     LD BC, 6144                 ; $2000-$37FF, tabla de patrones completa
     LD A, $01                 ; patron solido: bit 0 activo en cada byte (no es un contador)
@@ -3800,9 +3800,8 @@ ESCRIBIR_PATRON_VRAM:              ; $5CAF
 ; avanzando HL 8 columnas cada vez; si es <$20, no es un caracter --
 ; es un contador de columnas en blanco a saltar (ver .SALTAR_COLUMNAS). ---
 DIBUJAR_TEXTO_VRAM:                         ; $5CD1
-    DI
-    LD A, (DE)
-    LD C, A                    ; C = numero de caracteres del registro
+    JP V9_TEXTO                ; PROYECTO V9990: copia el texto al V9990 (v9990.asm). Original: DI / LD A,(DE) /
+                               ; LD C,A (C = numero de caracteres del registro)
     INC DE
     EX AF, AF'
     LD A, (DE)                 ; 2o byte de cabecera: valor de color/atributo (queda en AF' para ESCRIBIR_PATRON_VRAM)
@@ -3841,12 +3840,12 @@ DIBUJAR_TEXTO_VRAM:                         ; $5CD1
 
 ; --- Espera a que se pulse una tecla (via COMPROBAR_PULSACION). ---
 ESPERAR_TECLA_PULSADA:                ; $5CFE
-    CALL COMPROBAR_PULSACION
+    CALL V9_PULSACION         ; PROYECTO V9990: paso del espejo. Original: CALL COMPROBAR_PULSACION
     JR Z, ESPERAR_TECLA_PULSADA
     RET
 ; --- Espera a que se suelte la tecla actual (via COMPROBAR_PULSACION). ---
 ESPERAR_TECLA_SOLTADA:                     ; $5D04
-    CALL COMPROBAR_PULSACION
+    CALL V9_PULSACION         ; PROYECTO V9990: paso del espejo. Original: CALL COMPROBAR_PULSACION
     JR NZ, ESPERAR_TECLA_SOLTADA
     RET
 
@@ -4317,7 +4316,7 @@ GESTIONAR_CICLO_NIVELES:                ; $6045
     CALL ENLACE_MOTOR_MOVIMIENTO_COLISION
     CALL ESPERAR_TIC               ; PROYECTO (optimizacion): tic a ritmo fijo, como el juego. Original: CALL WAIT_VBLANK
     CALL ACTUALIZAR_LOSETA_BOLA_ESPECIAL
-    CALL COMPROBAR_PULSACION
+    CALL V9_PULSACION         ; PROYECTO V9990: paso del espejo. Original: CALL COMPROBAR_PULSACION
     JR NZ, .FIN_CICLO_NIVELES
     JR .REPRODUCIR_GUION_DEMO
 .FIN_CICLO_NIVELES:

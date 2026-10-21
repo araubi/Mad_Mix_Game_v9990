@@ -148,3 +148,49 @@ cuando hay V9990, y eso sobra para compensarlo.
   4 losetas pendientes, las que cambian ese mismo tic).
 - Capturas de las dos salidas: el contenido de la ventana coincide
   píxel a píxel salvo los actores, que llegan en F2.
+
+## 7. F2: versión completa en el V9990 con los gráficos del remake (2026-10-21)
+
+Con un GFX9000 toda la imagen sale por el V9990 y el TMS no recibe el
+volcado de la ventana. Sin GFX9000 el juego es idéntico a f1c (comprobado
+con `compara.sh` y las ROM `--pruebas`: capturas idénticas de 22 a 54 s).
+
+**Gráficos.** `tools/graficos.py` convierte `graficos/remake/` (del
+grafista, entregados por Rubén) a `build/v9_*.bin` y `build/v9_datos.inc`;
+`build.py` lo ejecuta entre dos pasadas de sjasmplus. El cargador de la ROM
+(`V9_SUBIR`, `src/rom/rom.asm`) sube los fragmentos a la VRAM antes de
+arrancar.
+
+- Los mapas del grafista están girados en horizontal respecto a la
+  matriz; `alinear()` busca el giro de columnas de cada nivel (1: 3;
+  5 y 12: 0; 7: 13; resto: 31). Coincidencia del 85 al 100 %.
+- Bloque de 4 KB por nivel en $20000: por celda (valor inicial, loseta del
+  dibujo, suelo de debajo), paleta de la capa B en +$E80 y loseta de
+  respaldo por valor en +$F00. En partida: valor inicial → dibujo; valor
+  comodín (bola comida) → suelo; otro → respaldo. La chispa de la puerta de
+  los fantasmas ($38/$39) usa la loseta del nivel dada la vuelta.
+- 222 losetas (capa B, $40000) y 161 patrones de sprite ($18000).
+
+**Paletas.** 0-15 colores del TMS (espejo), 16-31 laberinto del nivel,
+32-47 sprites, 48-63 marco o portada. Los textos sobre la ventana (FASE,
+READY?, ESTÁS FRITO) se pasan a la paleta del marco con `V9_TMS_A_MARCO`;
+los colores del TMS que no tienen uno parecido en el marco ocupan sus
+entradas libres.
+
+**Modos** (`V9_MODO`): espejo (menús, créditos, redefinir teclas: copia de
+la pantalla del TMS fila a fila, solo las filas cuya suma cambia; al entrar
+se ponen en negro y cada fila aparece al copiarla), juego (laberinto,
+sprites, marco y marcador nuevos) y portada.
+
+**Interrupciones.** `V9_ISR` atiende el fin de pantalla del V9990 (scroll
+y tabla de sprites). Si el juego estaba en un HALT, vuelve al mismo HALT
+para que las pausas sigan contando solo los VBLANK del TMS. Para no
+confundir «en el HALT» con «justo detrás del HALT» (la ISR del TMS vuelve
+a la instrucción siguiente y, si el V9990 interrumpe en ese momento,
+parece un HALT a medias y la pausa no avanza nunca: así se colgaba en
+«FASE 1»), con V9990 la ISR del TMS vuelve por `V9_ISR.TRAS_TMS`, que
+atiende allí un fin de pantalla pendiente del V9990.
+
+**Pendiente.** Probar en máquina real; los menús tardan algo más de un
+segundo en copiarse (hay pocos puntos seguros donde leer el TMS); los
+fantasmas usan todos el mismo dibujo del grafista.

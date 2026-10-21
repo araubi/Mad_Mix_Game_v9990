@@ -2,13 +2,19 @@
 """
 build.py -- Mad Mix Game v9990: compila la ROM completa.
 
-  1. src/juego/imagen_ram.asm -> build/ram_1000.bin, ram_8400.bin,
-     logotopo.bin (el juego en sus direcciones nativas de RAM).
-  2. Trocea esos binarios en fragmentos de <= 2 KB que no cruzan
-     limites de banco de 16 KB y genera:
+  1. src/juego/imagen_ram.asm -> build/ram_1000.bin, ram_6500.bin,
+     ram_8400.bin, ram_0100.bin, logotopo.bin (el juego en sus
+     direcciones nativas de RAM).
+  2. tools/graficos.py: los graficos del remake (graficos/remake) al
+     formato del V9990 (build/v9_*.bin) y build/v9_datos.inc, que
+     incluye v9990_ext.asm; por eso el paso 1 se repite despues.
+  3. Trocea los binarios en fragmentos que no cruzan limites de banco
+     de 16 KB y genera:
        build/carga_util.bin   -- bancos 1..n de la megaROM
-       build/tabla_carga.inc  -- TABLA_LOGO y TABLA_JUEGO para el cargador
-  3. src/rom/rom.asm -> build/madmix_v9990.rom (ASCII16), rellenada a
+       build/tabla_carga.inc  -- TABLA_LOGO, TABLA_JUEGO y TABLA_EXT (a
+                                 RAM, fragmentos de <= 2 KB) y TABLA_V9990
+                                 (a la VRAM del V9990, hasta 16 KB)
+  4. src/rom/rom.asm -> build/madmix_v9990.rom (ASCII16), rellenada a
      potencia de 2.
 
 Uso: python3 tools/build.py [--pruebas]   (requiere sjasmplus en el PATH)
@@ -30,7 +36,20 @@ TABLAS = [
     ("TABLA_LOGO", [("logotopo.bin", 0x9470)]),
     ("TABLA_JUEGO", [("ram_1000.bin", 0x1000), ("ram_6500.bin", 0x6500),
                      ("ram_8400.bin", 0x8400)]),
+    ("TABLA_EXT", [("ram_0100.bin", 0x0100)]),
 ]
+
+# Graficos del V9990 (tools/graficos.py) y su direccion en la VRAM
+VRAM = [("v9_capa_a.bin", 0x06000), ("v9_sprites.bin", 0x18000),
+        ("v9_niveles.bin", 0x20000), ("v9_losetas.bin", 0x40000)]
+
+DATOS_VACIOS = """; provisional (tools/build.py), lo sustituye tools/graficos.py
+V9_PALETA_MARCO:   DS 48
+V9_PALETA_PORTADA: DS 48
+V9_PALETA_SPRITES: DS 48
+V9_TMS_A_MARCO:    DS 16
+V9_META:           DS 256
+"""
 
 
 PRUEBAS = "--pruebas" in sys.argv
@@ -46,6 +65,13 @@ def sjasmplus(cwd, fuente):
 
 def main():
     os.makedirs(BUILD, exist_ok=True)
+    datos = os.path.join(BUILD, "v9_datos.inc")
+    if not os.path.exists(datos):
+        open(datos, "w").write(DATOS_VACIOS)
+    sjasmplus(os.path.join(RAIZ, "src", "juego"), "imagen_ram.asm")
+    r = subprocess.run([sys.executable, os.path.join(RAIZ, "tools", "graficos.py")])
+    if r.returncode:
+        sys.exit("ERROR: tools/graficos.py fallo")
     sjasmplus(os.path.join(RAIZ, "src", "juego"), "imagen_ram.asm")
 
     carga = bytearray()          # empieza en el banco 1 (offset ROM $4000)
@@ -65,6 +91,21 @@ def main():
                 pos += n
         lineas.append("    DW 0")
         lineas.append("")
+    # graficos del V9990: DB bits 16-18 : DW bits 0-15 : DB banco : DW origen, longitud
+    lineas.append("TABLA_V9990:")
+    for fichero, destino in VRAM:
+        datos = open(os.path.join(BUILD, fichero), "rb").read()
+        pos = 0
+        while pos < len(datos):
+            off_rom = BANCO + len(carga)
+            banco, dentro = divmod(off_rom, BANCO)
+            n = min(len(datos) - pos, BANCO - dentro)
+            carga += datos[pos:pos + n]
+            v = destino + pos
+            lineas.append(f"    DB {v >> 16} : DW ${v & 0xFFFF:04X} : DB {banco} : DW ${0x4000 + dentro:04X}, {n}")
+            pos += n
+    lineas.append("    DB $FF")
+    lineas.append("")
     open(os.path.join(BUILD, "carga_util.bin"), "wb").write(carga)
     open(os.path.join(BUILD, "tabla_carga.inc"), "w").write("\n".join(lineas))
 

@@ -109,8 +109,8 @@ FRAME_FLAG: DB 0                  ; semaforo real de ENTRADA_INTERRUPCION_VBLANK
 ;  para nada de esto, ver hallazgo del volcado de RAM en vivo).
 ; ==============================================================
 MOTOR_ACTORES:                  ; objetivo real de JT_MOTOR_ACTORES (0x8440)
-    BIT 7, E                    ; bit7 de la columna (E) como filtro previo de entrada
-    RET NZ                      ; activo -> ni siquiera intenta dibujar este actor
+    JP V9_ACTOR                 ; PROYECTO V9990: con el V9990 el actor va a sprites (v9990.asm). Original:
+                                ; BIT 7,E (bit7 de la columna como filtro previo de entrada) / RET NZ
     PUSH AF
     LD A, ($8437)                ; contador de actores activos
     CP 10                        ; 10 = maximo de actores activos simultaneos (tabla IX de 12 bytes/registro)
@@ -2114,7 +2114,7 @@ DIBUJAR_MARCADOR_PUNTOS:
     CALL   DIBUJAR_MARCADOR_PUNTOS_DIGITOS  ; convierte la puntuacion a digitos ASCII
     LD     IX,BUFFER_DIGITOS_PUNTUACION
 DIBUJAR_MARCADOR_PUNTOS_COMMON:
-    LD     HL,$16B0               ; posicion fija en pantalla del marcador
+    CALL   V9_MARCADOR            ; PROYECTO V9990: avisa del texto nuevo y hace LD HL,$16B0 (posicion fija en pantalla del marcador)
     CALL   DIBUJAR_TEXTO_INVERTIDO_VRAM
     POP    IX
     POP    BC
@@ -2483,7 +2483,7 @@ INICIO:
     LD DE, GUION_MELODIA_CANAL_2
     CALL INSTALAR_RECURSO_SONIDO   ; = $C4A0, indice A=2
 .wait_5D0A:
-    CALL COMPROBAR_PULSACION          ; COMPROBAR_PULSACION (madmix_scr.asm, identificado) -- se sondea (JR Z en bucle)
+    CALL V9_PULSACION          ; PROYECTO V9990: paso del espejo y COMPROBAR_PULSACION (madmix_scr.asm) -- se sondea (JR Z en bucle)
     JR Z, .wait_5D0A
     CALL VACIAR_CANALES_SONIDO
     CALL DIBUJAR_MARCO_CARAMELO_VRAM          ; DIBUJAR_MARCO_CARAMELO_VRAM (madmix_scr.asm, identificado)

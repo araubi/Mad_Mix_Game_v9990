@@ -70,8 +70,7 @@ VOLCAR_TRAS_FLANCO:
     PUSH BC
     PUSH IX
     PUSH IY
-    CALL VOLCADO_HAZ            ; volcado sincronizado con el haz (volcado_haz.asm)
-    CALL V9_TIC                 ; V9990: losetas cambiadas y scroll (v9990.asm)
+    CALL V9_VOLCADO             ; volcado sincronizado con el haz al TMS (volcado_haz.asm) o, con el V9990, V9_TIC
     DI                          ; el resto, como en la ISR original
     CALL CONTINUAR_CAPTURA_MASCARAS_ACTORES
     CALL RESET_CONTADOR_ACTORES
@@ -113,7 +112,7 @@ ESPERAR_TIC:
     LD A, (TIC_FRAMES)
     DEC A
     CP B
-    CALL NC, TRASPONER_ANTES    ; 1 <= d <= TIC_FRAMES: sobra tiempo antes del VBLANK
+    CALL NC, V9_TRASPONER       ; 1 <= d <= TIC_FRAMES: sobra tiempo antes del VBLANK
 .ESPERAR:
     LD A, (OBJETIVO_TIC)
     SUB (HL)                    ; d = frames que faltan hasta el objetivo
@@ -149,7 +148,7 @@ ESPERAR_TIC:
 .EN_OBJETIVO:
     ; El VBLANK objetivo ya ha pasado. Si el haz aun no ha llegado a la
     ; ventana, el volcado sincronizado todavia cabe en este frame.
-    CALL HAZ_PASADO
+    CALL V9_HAZ_PASADO
     JR NZ, .LISTO               ; ya paso: al siguiente VBLANK, como antes
     POP BC
     POP HL

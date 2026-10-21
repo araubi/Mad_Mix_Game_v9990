@@ -8,6 +8,7 @@
 ;    build/ram_1000.bin   $1000-$64FF  (cuerpo de MADMIX.SCR)
 ;    build/ram_6500.bin   $6500-...    (codigo nuevo: optimizaciones.asm y v9990.asm)
 ;    build/ram_8400.bin   $8400-$DDA0  (motor, MADMIX1.BIN)
+;    build/ram_0100.bin   $0100-...    (V9990 con los graficos del remake, v9990_ext.asm)
 ;    build/logotopo.bin   $9470-...    (logo animado de Topo, cinta)
 ;
 ;  Base: reconstruccion por ingenieria inversa de Rafael Eduardo
@@ -35,6 +36,8 @@ FIN_MOTOR:
     INCLUDE "v9990.asm"         ; ORG $6C00
     INCLUDE "volcado_haz.asm"   ; a continuacion
 
+    INCLUDE "v9990_ext.asm"     ; ORG $0100 (RAM baja)
+
     ; Compilacion de pruebas (tools/build.py --pruebas): GENERAR_ALEATORIO
     ; usa la semilla en vez del registro R, cuyo valor depende de cuantas
     ; instrucciones se hayan ejecutado. Asi la demo (entrada grabada) es
@@ -48,6 +51,7 @@ FIN_MOTOR:
     SAVEBIN "../../build/ram_1000.bin", $1000, $5500
     SAVEBIN "../../build/ram_6500.bin", $6500, FIN_VOLCADO_HAZ-$6500
     SAVEBIN "../../build/ram_8400.bin", START, FIN_MOTOR-START
+    SAVEBIN "../../build/ram_0100.bin", $0100, FIN_V9990_EXT-$0100
 
     ; El logo se ensambla al final porque comparte direcciones con el
     ; motor ($9470); su volcado ya se hizo arriba.

@@ -157,6 +157,9 @@ INICIO_ROM:
     CALL ENTRADA_LOGO
     DI
 
+    ; --- graficos del V9990 (GFX9000), si lo hay: con la ROM aun visible ---
+    CALL V9_SUBIR
+
     ; --- juego: a partir de aqui ya no hay BIOS ---
     JP ARRANCAR_JUEGO
 
@@ -407,6 +410,8 @@ ARRANCAR_JUEGO:
     LD BC, $0FFF
     LD (HL), L
     LDIR
+    LD IX, TABLA_EXT            ; V9990 con los graficos del remake ($0100-$0FFF)
+    CALL COPIAR_FRAGMENTOS
     LD A, (SLOT_RAM)
     LD B, 1
     CALL PONER_SLOT
@@ -416,6 +421,101 @@ ARRANCAR_JUEGO:
     LD (TIC_FRAMES), A
     CALL V9_INICIAR             ; si hay GFX9000: modo P1 y losetas del laberinto
     JP ENTRADA_JUEGO
+
+; --------------------------------------------------------------
+;  V9_SUBIR: si hay un V9990, lo reinicia, lo pone en modo P1 con la
+;  pantalla apagada y sube a su VRAM los graficos ya convertidos
+;  (TABLA_V9990: DB bits 16-18 : DW bits 0-15 de la direccion de VRAM
+;  : DB banco : DW origen, longitud; termina en $FF). El resto lo
+;  prepara V9_INICIAR al arrancar el juego.
+; --------------------------------------------------------------
+V9_SUBIR:
+    LD A, 15
+    OUT ($64), A
+    LD A, $2A
+    OUT ($63), A
+    LD A, $4F                   ; R#15, lectura sin autoincremento
+    OUT ($64), A
+    IN A, ($63)
+    CP $2A
+    RET NZ
+    LD A, 15
+    OUT ($64), A
+    LD A, $15
+    OUT ($63), A
+    LD A, $4F
+    OUT ($64), A
+    IN A, ($63)
+    CP $15
+    RET NZ
+    LD A, 2
+    OUT ($67), A                ; reinicio
+    XOR A
+    OUT ($67), A
+    LD A, 6
+    OUT ($64), A
+    LD A, $05                   ; P1
+    OUT ($63), A
+    LD A, 8
+    OUT ($64), A
+    LD A, $02                   ; pantalla apagada, 512 KB
+    OUT ($63), A
+    ; patrones del espejo ($00000-$05FFF) a 0
+    XOR A
+    OUT ($64), A
+    OUT ($63), A
+    OUT ($63), A
+    OUT ($63), A
+    LD BC, $6000
+.BORRAR:
+    XOR A
+    OUT ($60), A
+    DEC BC
+    LD A, B
+    OR C
+    JR NZ, .BORRAR
+    LD IX, TABLA_V9990
+.FRAGMENTO:
+    LD A, (IX+0)
+    CP $FF
+    JR Z, .FIN
+    XOR A
+    OUT ($64), A                ; R#0: puntero de escritura
+    LD A, (IX+1)
+    OUT ($63), A
+    LD A, (IX+2)
+    OUT ($63), A
+    LD A, (IX+0)
+    OUT ($63), A
+    LD A, (IX+3)
+    LD (BANCO1_REG), A
+    LD L, (IX+4)
+    LD H, (IX+5)
+    LD E, (IX+6)
+    LD D, (IX+7)
+    LD C, $60
+.BLOQUE:
+    LD A, D
+    AND A
+    JR Z, .RESTO
+    LD B, 0
+    OTIR
+    DEC D
+    JR .BLOQUE
+.RESTO:
+    LD A, E
+    AND A
+    JR Z, .SIGUIENTE
+    LD B, A
+    OTIR
+.SIGUIENTE:
+    LD DE, 8
+    ADD IX, DE
+    JR .FRAGMENTO
+.FIN:
+    XOR A
+    LD (BANCO1_REG), A
+    RET
 
 ; --------------------------------------------------------------
     INCLUDE "../../build/tabla_carga.inc"
