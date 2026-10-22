@@ -39,6 +39,13 @@ TABLAS = [
     ("TABLA_EXT", [("ram_0100.bin", 0x0100)]),
 ]
 
+# Pantalla de carga para el TMS cuando hay GFX9000 (rom.asm, V9_LOGO_PREPARAR):
+# trozos de ram_1000.bin (la portada de MADMIX.SCR) que ya van en la ROM,
+# (direccion en la imagen, bytes, destino en RAM)
+PORTADA_TMS = [(0x10AC, 16, 0xA5F0),     # PALETA_COLORES_PORTADA
+               (0x10ED, 6144, 0xA600),   # PORTADA_PATRON
+               (0x28F0, 768, 0xBE00)]    # PORTADA_COLOR (comprimido)
+
 # Graficos del V9990 (tools/graficos.py) y su direccion en la VRAM
 VRAM = [("v9_capa_a.bin", 0x06000), ("v9_sprites.bin", 0x18000),
         ("v9_niveles.bin", 0x20000), ("v9_losetas.bin", 0x40000)]
@@ -76,6 +83,7 @@ def main():
 
     carga = bytearray()          # empieza en el banco 1 (offset ROM $4000)
     lineas = ["; generado por tools/build.py -- no editar", ""]
+    en_rom = {}                  # direccion en RAM -> (banco, direccion en la pagina 1)
     for nombre, tramos in TABLAS:
         lineas.append(f"{nombre}:")
         for fichero, destino in tramos:
@@ -85,12 +93,28 @@ def main():
                 off_rom = BANCO + len(carga)
                 banco, dentro = divmod(off_rom, BANCO)
                 n = min(FRAG, len(datos) - pos, BANCO - dentro)
+                for k in range(n):
+                    en_rom[destino + pos + k] = (banco, 0x4000 + dentro + k)
                 carga += datos[pos:pos + n]
                 lineas.append(
                     f"    DW ${destino + pos:04X} : DB {banco} : DW ${0x4000 + dentro:04X}, {n}")
                 pos += n
         lineas.append("    DW 0")
         lineas.append("")
+    # pantalla de carga para el TMS: los mismos bytes de la ROM, por trozos
+    # que no cruzan un limite de banco
+    lineas.append("TABLA_PORTADA_TMS:")
+    for origen, n, destino in PORTADA_TMS:
+        k = 0
+        while k < n:
+            banco, rom = en_rom[origen + k]
+            m = 1
+            while k + m < n and m < FRAG and en_rom[origen + k + m] == (banco, rom + m):
+                m += 1
+            lineas.append(f"    DW ${destino + k:04X} : DB {banco} : DW ${rom:04X}, {m}")
+            k += m
+    lineas.append("    DW 0")
+    lineas.append("")
     # graficos del V9990: DB bits 16-18 : DW bits 0-15 : DB banco : DW origen, longitud
     lineas.append("TABLA_V9990:")
     for fichero, destino in VRAM:

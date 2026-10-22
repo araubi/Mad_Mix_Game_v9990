@@ -190,9 +190,8 @@ ENCENDER_PANTALLA_VDP:
 ; en el bloque reubicado (cola sin desensamblar, no relevante para
 ; este mecanismo).
 PROGRAMAR_APAGADO_PANTALLA:              ; antes PATCH_OFF_10D8 ($10D8)
-    LD A, $A2
-    LD (VDP_REGISTRO1_PENDIENTE), A
-    RET
+    JP V9_APAGADO                ; PROYECTO V9990: con GFX9000 el TMS no se apaga (muestra la pantalla de carga). Original:
+    DS 3, 0                      ; LD A,$A2 / LD (VDP_REGISTRO1_PENDIENTE),A / RET
 PROGRAMAR_ENCENDIDO_PANTALLA:                ; antes PATCH_ON_10DE ($10DE)
     LD A, $E2
     LD (VDP_REGISTRO1_PENDIENTE), A

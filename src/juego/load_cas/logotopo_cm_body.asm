@@ -40,6 +40,14 @@ VRAM_TABLA_COLOR:      EQU $2000  ; base completa de la tabla de color (LIMPIAR_
 VRAM_COLOR_ZONA_TOPO:  EQU $2658  ; zona de color de "Topo" (ANIMAR_COLOR_TOPO)
 VRAM_COLOR_ZONA_SOFT:  EQU $2F78  ; zona de color de "Soft" (ANIMAR_PUNTO_LUZ_SOFT/RELLENAR_COLOR_TOPO)
 
+; --- PROYECTO V9990: las escrituras y lecturas de VRAM del logo pasan
+; por el cargador de la ROM (src/rom/rom.asm, $E000). Sin GFX9000 van
+; al BIOS como en el original (WRTVRM $004D, LDIRMV $0059); con GFX9000
+; el logo se dibuja en el V9990 y el TMS se queda con la pantalla de
+; carga. ---
+LOGO_WRTVRM:           EQU $E000
+LOGO_LDIRMV:           EQU $E003
+
 ENTRADA_LOGOTOPO:
     JP DIBUJAR_LOGO_TOPOSOFT                   ; $9470  C3 D1 95
 
@@ -94,7 +102,7 @@ ESCRIBIR_8_BYTES_VRAM:
     PUSH BC                     ; $94A6  C5
     LD B, 8                     ; $94A7  06 08  ; 8 bytes a escribir
 .BUCLE_8_BYTES:
-    CALL $004D                  ; $94A9  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
+    CALL LOGO_WRTVRM                 ; $94A9  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
     INC HL                      ; $94AC  23
     DJNZ .BUCLE_8_BYTES                 ; $94AD  10 FA
     POP BC                      ; $94AF  C1
@@ -155,7 +163,7 @@ DIBUJAR_FORMA_ANIMADA:
     INC DE                      ; $94F4  13
     RES 7, H                    ; $94F5  CB BC
     RES 6, H                    ; $94F7  CB B4
-    CALL $004D                  ; $94F9  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
+    CALL LOGO_WRTVRM                 ; $94F9  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
     INC HL                      ; $94FC  23
     SET 6, H                    ; $94FD  CB F4
     SET 7, H                    ; $94FF  CB FC
@@ -331,7 +339,7 @@ LIMPIAR_TABLA_COLOR_VRAM:
     LD BC, 6144                 ; $9605  01 00 18  ; bytes (tamano completo de la tabla de color)
 .BUCLE_RELLENO:
     LD A, $F0                   ; $9608  3E F0  ; byte de color VRAM (relleno)
-    CALL $004D                  ; $960A  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
+    CALL LOGO_WRTVRM                 ; $960A  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
     INC HL                      ; $960D  23
     DEC BC                      ; $960E  0B
     LD A, B                     ; $960F  78
@@ -354,7 +362,7 @@ RELLENAR_COLOR_TOPO:
 .BUCLE_FILA:
     LD B, 64                    ; $961B  06 40  ; 64 bytes por bloque/fila
 .BUCLE_BYTE:
-    CALL $004D                  ; $961D  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
+    CALL LOGO_WRTVRM                 ; $961D  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
     INC HL                      ; $9620  23
     DJNZ .BUCLE_BYTE                 ; $9621  10 FA
     LD DE, $00C0                ; $9623  11 C0 00  ; salto VRAM al siguiente bloque
@@ -434,7 +442,7 @@ ANIMAR_COLOR_TOPO:
 ESCRIBIR_8_BYTES_VRAM_C:
     LD C, 8                     ; $967E  0E 08  ; 8 bytes a escribir
 .BUCLE_8_BYTES:
-    CALL $004D                  ; $9680  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
+    CALL LOGO_WRTVRM                 ; $9680  CD 4D 00  ; probable WRTVRM (hook ROM MSX)
     INC HL                      ; $9683  23
     DEC C                       ; $9684  0D
     JR NZ, .BUCLE_8_BYTES               ; $9685  20 F9
@@ -451,7 +459,7 @@ LIMPIAR_TABLA_PATRONES_VRAM:
     LD HL, $0000                ; $9688  21 00 00  ; VRAM, base de la tabla de patrones (pagina 0)
     LD DE, $C000                ; $968B  11 00 C0  ; sin usar por FILVRM, ver cabecera
     LD BC, 6144                 ; $968E  01 00 18  ; bytes (tamano completo de la tabla de patrones)
-    JP $0059                    ; $9691  C3 59 00  ; hook ROM MSX, identidad exacta sin confirmar
+    JP LOGO_LDIRMV                 ; $9691  C3 59 00  ; hook ROM MSX, identidad exacta sin confirmar
 
 ; --- TABLA_PUNTEROS_FORMAS: 15 palabras, offset (desde TABLA_FORMAS)
 ; de cada una de las 15 "formas" animadas del logo. Indexada por

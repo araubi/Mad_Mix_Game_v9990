@@ -32,6 +32,7 @@
 ;    RELLENAR_SOLIDO_AREA_JUEGO_BUFFER_VRAM -> V9_RELLENAR (fin de partida)
 ;    DIBUJAR_TEXTO_VRAM   -> V9_TEXTO (textos sobre la ventana)
 ;    DIBUJAR_MARCADOR_PUNTOS -> V9_MARCADOR (texto del marcador)
+;    PROGRAMAR_APAGADO_PANTALLA -> V9_APAGADO (el TMS no se apaga)
 ;    COMPROBAR_PULSACION (6 llamadas) -> V9_PULSACION (espera de tecla)
 ;    optimizaciones.asm: el volcado al TMS pasa a V9_VOLCADO, y
 ;    ESPERAR_TIC usa V9_TRASPONER y V9_HAZ_PASADO
@@ -201,7 +202,21 @@ V9_PORTADA:
     AND A
     LD A, MODO_PORTADA
     CALL NZ, V9_PONER_MODO
+    LD A, (V9_PRESENTE)
+    AND A
+    RET NZ                      ; el TMS sigue encendido con la pantalla de carga
     JP APAGAR_PANTALLA_VDP
+
+; PROGRAMAR_APAGADO_PANTALLA: con el V9990 el TMS no se apaga nunca.
+V9_APAGADO:
+    LD A, (V9_PRESENTE)
+    AND A
+    LD A, $A2
+    JR Z, .PONER
+    LD A, $E2
+.PONER:
+    LD (VDP_REGISTRO1_PENDIENTE), A
+    RET
 
 ; LIMPIAR_VRAM_AREA_JUEGO (menu, creditos, redefinir teclas): modo espejo.
 V9_LIMPIAR:
