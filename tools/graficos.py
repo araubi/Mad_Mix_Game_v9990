@@ -343,6 +343,7 @@ PUNTOS = (176, 176, 224, 192)   # zona del marcador
 def paleta_marco():
     m = rgb(Image.open(ruta("madmix.png")))
     sp = rgb(Image.open(ruta("or fase 1.png")))
+    sp_excavadora = rgb(Image.open(ruta("excavadora_vertical.png")))
     c = Counter()
     for y in range(196):
         for x in range(256):
@@ -484,13 +485,14 @@ SPRITES = {
     # poder; lo cambia V9_META_ELEGIR)
     64: (c16(304, Y0), None),
 }
-# El grafista solo dibujo la excavadora de lado: hacia abajo (14) es esa
-# girada un cuarto de vuelta y hacia arriba (15), la de abajo dada la
-# vuelta de arriba abajo.
-GIROS = {14: "abajo", 15: "arriba"}
-# Hacia arriba no hay izquierda ni derecha: el juego no usa el 6 (ni el 64)
-# reflejados, y sus patrones hacen falta para la excavadora.
-SIN_ESPEJO = (29, 30, 6, 64)
+# El grafista solo dibujo la excavadora de lado: hacia abajo (14) y hacia
+# arriba (15) son los dibujos de Ruben (graficos/remake/excavadora_vertical.png,
+# a partir de los originales de MSX1).
+EXCAVADORA = {14: (0, 0, 20, 18), 15: (24, 0, 20, 18)}
+# Hacia arriba y hacia abajo no hay izquierda ni derecha: el juego no usa
+# reflejados los sprites de esas direcciones (comecocos, excavadora e
+# hipopotamo: subtablas A-D), y sus patrones hacen falta.
+SIN_ESPEJO = (29, 30, 6, 64, 14, 15, 19, 20, 21, 22, 24, 25)
 
 
 def caja(puntos):
@@ -520,6 +522,7 @@ def original(mem, i, espejo):
 
 def sprites(mem):
     sp = rgb(Image.open(ruta("or fase 1.png")))
+    sp_excavadora = rgb(Image.open(ruta("excavadora_vertical.png")))
     c = Counter()
     for a, b in SPRITES.values():
         for r in (a, b):
@@ -572,17 +575,15 @@ def sprites(mem):
             a, b = SPRITES[i]
             r = (b if espejo else a) or a
             reflejar = espejo and not b
+            if i in EXCAVADORA:
+                r, reflejar, hoja = EXCAVADORA[i], False, sp_excavadora
+            else:
+                hoja = sp
             x, y, w, h = r
-            q, _, _ = cuantizar(sp.crop((x, y, x + w, y + h)), pal_q, MAGENTA)
+            q, _, _ = cuantizar(hoja.crop((x, y, x + w, y + h)), pal_q, MAGENTA)
             q = bytes(15 if v == 9 else v for v in q)     # el rosa va al 15
             if reflejar:
                 q = bytes(q[j * w + w - 1 - k] for j in range(h) for k in range(w))
-            if i in GIROS:
-                # un cuarto de vuelta a la derecha: (k, j) -> (h - 1 - j, k)
-                q = bytes(q[(h - 1 - k) * w + j] for j in range(w) for k in range(h))
-                w, h = h, w
-                if GIROS[i] == "arriba":
-                    q = bytes(q[(h - 1 - j) * w + k] for j in range(h) for k in range(w))
             pts = [(k, j) for j in range(h) for k in range(w) if q[j * w + k]]
             if not pts:
                 meta[(i, espejo)] = []

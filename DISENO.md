@@ -330,3 +330,8 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
 - `V9_NT_COLOR` pasa a bucle para dejar sitio en $F010-$F200.
 - Sin GFX9000 la partida es idéntica a f1c (C-BIOS MSX1 y MSX2); con GFX9000,
   la partida del nivel 1 es idéntica a f2g.
+- **f2i: excavadora de Rubén.** Hacia abajo y hacia arriba son sus dibujos
+  (a partir de los originales de MSX1, `graficos/remake/excavadora_vertical.png`,
+  `EXCAVADORA`), con brillo y sombra en la pala. Para que quepan, tampoco se
+  generan reflejados los sprites de arriba y abajo de la excavadora y del
+  hipopótamo (247 patrones de 256).
