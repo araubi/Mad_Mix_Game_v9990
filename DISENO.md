@@ -249,3 +249,9 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   suelo más parecido.
 - Sin cambiar de juego, la partida en el TMS es idéntica a f1c (C-BIOS
   MSX1 y MSX2); alternar dos veces deja la RAM como estaba.
+- **Fantasmas blancos hacia arriba (f2e, V9990).** La tabla de animación
+  de los fantasmas vulnerables (`TABLA_ANIMACION_PELMAZOIDE` + 38) usa
+  hacia arriba los mismos sprites que los normales (31 y 32, azules). Con
+  el V9990, `V9_FANTASMAS_BLANCOS` los cambia al arrancar por el 31 y el 32
+  reflejados, que en `V9_META` son los dibujos blancos de espaldas del
+  grafista. En el TMS no cambia nada.

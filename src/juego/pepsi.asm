@@ -167,6 +167,16 @@ PEPSI_XOR:
     DJNZ .BYTE
     JR PEPSI_XOR
 
+; Con el V9990, los fantasmas vulnerables hacia arriba usan el 31 y el 32
+; reflejados (blancos en V9_META) en lugar de los mismos que los normales
+; (azules); en el TMS siguen igual. Desde V9_INICIAR.
+V9_FANTASMAS_BLANCOS:
+    LD HL, $9F9F
+    LD (TABLA_ANIMACION_PELMAZOIDE + 38), HL
+    LD HL, $A0A0
+    LD (TABLA_ANIMACION_PELMAZOIDE + 40), HL
+    RET
+
 FIN_PEPSI:
     ASSERT FIN_PEPSI <= $1000
 

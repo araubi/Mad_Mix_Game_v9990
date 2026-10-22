@@ -380,7 +380,9 @@ SPRITES = {
     # fantasmas: el dibujo de x=32/48 (y 128/144) mira a la derecha
     27: (c16(32, Y0), c16(64, Y0)), 28: (c16(48, Y0), c16(80, Y0)),
     29: (c16(0, Y0), None), 30: (c16(16, Y0), None),
-    31: (c16(96, Y0), None), 32: (c16(112, Y0), None),
+    # el 31 y el 32 reflejados son los fantasmas vulnerables hacia arriba
+    # (blancos; el juego usa los azules, ver V9_FANTASMAS_BLANCOS)
+    31: (c16(96, Y0), c16(224, Y0)), 32: (c16(112, Y0), c16(240, Y0)),
     33: (c16(128, Y0), c16(160, Y0)), 34: (c16(144, Y0), c16(176, Y0)),
     35: (c16(192, Y0), None), 36: (c16(208, Y0), None),
     37: (c16(480, Y0), None), 38: (c16(496, Y0), None), 39: (c16(448, Y0), c16(464, Y0)),

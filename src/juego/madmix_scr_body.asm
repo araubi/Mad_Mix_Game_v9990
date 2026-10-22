@@ -1819,6 +1819,7 @@ TABLA_ANIMACION_PELMAZOIDE:
     DB $21,$21,$22,$22               ; offset 26-29: cola sin usar, repite el patron anterior
     DB $A1,$A1                       ; offset 30-31: cola sin usar ($21 con bit7)
     DB $A2,$A2,$23,$23,$24,$24,$1F,$1F,$20,$20                          ; $5174-$517D: candidato a sprite huerfano (dato, no codigo -- ver cabecera de seccion)
+    ASSERT $ - TABLA_ANIMACION_PELMAZOIDE = 42   ; PROYECTO V9990: los 4 ultimos ($1F,$1F,$20,$20, fantasma vulnerable hacia arriba) los cambia V9_FANTASMAS_BLANCOS
 TABLA_ELECCION_DIRECCION:
     DB $01,$01,$01,$01,$01,$01,$01,$01  ; libres=ninguna (0000) -- sin libres, siempre intenta derecha por defecto
     DB $01,$01,$01,$01,$01,$01,$01,$01  ; libres=derecha (0001)

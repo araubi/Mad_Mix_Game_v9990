@@ -195,6 +195,7 @@ V9_INICIAR:
 
     LD A, 1
     LD (V9_PRESENTE), A
+    CALL V9_FANTASMAS_BLANCOS   ; pepsi.asm
     LD A, MODO_ESPEJO
     CALL V9_PONER_MODO
     DI
