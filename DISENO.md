@@ -297,3 +297,36 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   entero de golpe (unos 0,9 s en openMSX, antes lo pintaba fila a fila en
   1,3 s o más).
 - Sin GFX9000 la partida es idéntica a f1c (C-BIOS MSX1 y MSX2).
+
+## 12. f2h: segundo testeo en hardware real (2026-10-22)
+
+- **Trampillas (V9990).** Los mapas del grafista no las traen (muro y suelo
+  lisos), y solo se veían al moverlas, con la loseta de respaldo.
+  `trampillas()` (`tools/graficos.py`) las dibuja sobre las losetas del
+  grafista con la forma de las originales (estados A, B y en transición):
+  lo que cambia respecto al muro y suelo de al lado va en el color claro
+  del muro, en su color principal o en el más oscuro del nivel. Niveles 3,
+  4, 8, 10 y 14. Es un apaño hasta que el grafista dibuje las suyas.
+- **Excavadora hacia arriba y abajo (V9990).** El grafista solo la dibujó de
+  lado y los sprites 14 (abajo) y 15 (arriba) usaban ese dibujo. Ahora el 14
+  es el de lado girado un cuarto de vuelta y el 15, el 14 dado la vuelta de
+  arriba abajo (`GIROS`). Para que quepan (255 de 256 patrones), el 6 y el
+  64 reflejados, que el juego no usa, reutilizan los suyos (`SIN_ESPEJO`).
+- **Parpadeo al final de la bola de poder y del hipopótamo (V9990).** En los
+  3 últimos segundos (`MODO_ESPECIAL_CUENTA_ATRAS` < 30; el tic va a 10 por
+  segundo) se alterna cada medio segundo: el comecocos rojo con sus dibujos
+  amarillos (`V9_PARPADEO` en `V9_TIC` y `V9_PAC_AMARILLO` en
+  `V9_META_ELEGIR`; la mascota de Pepsi, sin la paleta roja) y el rosa del
+  hipopótamo con el amarillo (entrada 15 de los sprites, solo suya).
+- **Temblor al coger la bola de poder (máquina real, V9990).** En openMSX
+  los dos VDP interrumpen a la par y no se ve. La ISR del TMS tarda hasta
+  4 ms con algunos efectos de sonido (la bola de poder) y la tenía las
+  interrupciones cerradas; en una máquina real el fin de pantalla del V9990
+  llega cuando le toca, y si caía dentro de esa ISR el scroll se escribía
+  con la imagen siguiente ya empezada (a 60 Hz el V9990 tiene unos 3 ms sin
+  imagen): la pantalla se partía y temblaba mientras sonaba el efecto. Con
+  V9990, `V9_ISR` usa `V9_ISR_TMS` (`v9_portada.asm`), la misma ISR con las
+  interrupciones abiertas mientras cuenta el frame y suena la música.
+- `V9_NT_COLOR` pasa a bucle para dejar sitio en $F010-$F200.
+- Sin GFX9000 la partida es idéntica a f1c (C-BIOS MSX1 y MSX2); con GFX9000,
+  la partida del nivel 1 es idéntica a f2g.

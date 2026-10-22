@@ -473,6 +473,7 @@ V9_TIC:
     RET
 .JUEGO:
     CALL V9_BORRAR_OVERLAY
+    CALL V9_PARPADEO            ; v9_portada.asm
     ; --- nivel recien cargado: paleta y matriz entera ---
     LD A, (V9_NIVEL_NUEVO)
     AND A
@@ -1596,6 +1597,50 @@ V9_ESP_SUMAS:      DS 48
     ENDIF
 V9_SPR_BUF:        DS V9_MAX_SPRITES * 4
     ASSERT HIGH V9_SPR_BUF == HIGH (V9_SPR_BUF + V9_MAX_SPRITES * 4)
+; V9_META_ELEGIR (.NO_FANTASMA): DE = V9_META y, en la fase amarilla del
+; parpadeo, el comecocos rojo con sus dibujos amarillos (y la mascota de
+; The Pepsi Challenge sin la paleta roja).
+V9_PAC_AMARILLO:
+    LD DE, V9_META
+    LD A, (V9_AMARILLO)
+    AND A
+    RET Z
+    INC SP
+    INC SP                      ; ya no vuelve a V9_META_ELEGIR
+    LD A, (MODO_PEPSI)
+    AND A
+    JP NZ, V9_META_ELEGIR.PEPSI_MAPA
+    PUSH BC
+    LD A, L
+    AND $FE
+    LD C, A
+    PUSH HL
+    LD HL, .TABLA
+    LD B, 6
+.BUSCAR:
+    LD A, (HL)
+    INC HL
+    CP C
+    JR Z, .CAMBIO
+    INC HL
+    DJNZ .BUSCAR
+    POP HL
+    JR .INDICE
+.CAMBIO:
+    LD A, (HL)
+    POP HL
+    XOR C
+    XOR L                       ; el amarillo, con el mismo espejo
+    LD L, A
+.INDICE:
+    POP BC
+    ADD HL, HL
+    ADD HL, DE
+    RET
+.TABLA:                         ; rojo -> amarillo (sprite * 2)
+    DB 7 * 2, 0 * 2, 8 * 2, 1 * 2, 9 * 2, 2 * 2
+    DB 10 * 2, 3 * 2, 57 * 2, 4 * 2, 11 * 2, 5 * 2
+
 FIN_V9990_EXT:
     ASSERT FIN_V9990_EXT <= MODO_PEPSI     ; pepsi.asm, $0F00
 

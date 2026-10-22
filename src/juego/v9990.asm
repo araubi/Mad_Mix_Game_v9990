@@ -139,7 +139,7 @@ V9_ISR:
     PUSH HL
     LD HL, .TRAS_TMS
     EX (SP), HL
-    JP ENTRADA_INTERRUPCION_VBLANK
+    JP V9_ISR_TMS               ; v9_portada.asm
 .TAMBIEN_TMS:
     POP BC
     POP HL
@@ -148,7 +148,7 @@ V9_ISR:
     LD HL, .TRAS_TMS
     EX (SP), HL
     PUSH AF
-    JP ENTRADA_INTERRUPCION_VBLANK.ATENDER  ; con AF ya en la pila y el estado del TMS leido
+    JP V9_ISR_TMS.ATENDER       ; con AF ya en la pila y el estado del TMS leido
     ; Aqui una interrupcion del V9990 ya no se confunde con un HALT; si
     ; ha llegado sin que se atendiera aun, se atiende sin volver al HALT.
 .TRAS_TMS:

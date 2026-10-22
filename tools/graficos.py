@@ -152,6 +152,75 @@ def distancia(a, b):
     return sum(1 for x, y in zip(a, b) if x != y)
 
 
+# Trampillas (puertas de 2 x 2 losetas en un muro): los mapas del grafista
+# no las traen (muro y suelo lisos). Se dibujan sobre esas losetas con la
+# forma de las originales: lo que cambia respecto al muro/suelo de al lado
+# va en el color claro del muro (macizo), en su color principal (trama) o
+# en el mas oscuro del nivel (hueco).
+TRAMPILLA = ((74, 75, 67, 68), (71, 72, 73, 69), (76, 77, 78, 79))   # A, B, en transicion
+
+
+def lum(c):
+    return 0.3 * c[0] + 0.59 * c[1] + 0.11 * c[2]
+
+
+def trampillas(mem, m, filas, t, pal):
+    """Devuelve las losetas de las celdas con trampilla y las de respaldo de
+    los valores de trampilla del nivel."""
+    lo = {}
+
+    def bloque(vs):
+        b = [[0] * 32 for _ in range(32)]
+        for q, v in enumerate(vs):
+            if v not in lo:
+                lo[v] = loseta_original(mem, v)
+            for j in range(16):
+                for k in range(16):
+                    b[(q // 2) * 16 + j][(q % 2) * 16 + k] = 1 if lo[v][j * 16 + k] == 4 else 0
+        return b
+
+    def suma(b, y, x, rad):
+        return sum(b[y + dy][x + dx] for dy in range(-rad, rad + 1) for dx in range(-rad, rad + 1)
+                   if 0 <= y + dy < 32 and 0 <= x + dx < 32)
+
+    celdas, respaldo = {}, {}
+    arriba = {e[0]: e for e in TRAMPILLA}
+    for i in range(filas * 32):
+        e = arriba.get(m[i] & 0x7F)
+        if not e or i % 32 == 31 or i // 32 + 1 >= filas or (m[i + 1] & 0x7F) != e[1]:
+            continue
+        r, c = divmod(i, 32)
+        lado = c - 1 if c > 0 and not arriba.get(m[i - 1] & 0x7F) else (c + 2) % 32
+        liso = bloque((m[r * 32 + lado], m[r * 32 + lado], m[(r + 1) * 32 + lado], m[(r + 1) * 32 + lado]))
+        sitio = (i, i + 1, i + 32, i + 33)
+        cuenta = Counter(t[i])
+        claro = max(cuenta, key=lambda k: lum(pal[k]))
+        medio = ([k for k, _ in cuenta.most_common() if k != claro and lum(pal[k]) > 30] or [claro])[0]
+        oscuro = min(range(16), key=lambda k: lum(pal[k]))
+        for estado in TRAMPILLA:
+            b = bloque(estado)
+            nuevas = [bytearray(t[x]) for x in sitio]
+            for y in range(32):
+                for x in range(32):
+                    if b[y][x] == liso[y][x] and suma(b, y, x, 1) == suma(liso, y, x, 1):
+                        continue
+                    w = suma(b, y, x, 1)
+                    if not b[y][x] and w <= 1:
+                        col = oscuro
+                    elif w >= 6:
+                        col = claro
+                    elif 3 <= w <= 5 and suma(b, y, x, 2) >= 9:
+                        col = medio
+                    else:
+                        col = claro if b[y][x] else oscuro
+                    nuevas[(y // 16) * 2 + x // 16][(y % 16) * 16 + x % 16] = col
+            for q, x in enumerate(sitio):
+                if (m[x] & 0x7F) == estado[q]:
+                    celdas[x] = bytes(nuevas[q])
+                respaldo.setdefault(estado[q], bytes(nuevas[q]))
+    return celdas, respaldo
+
+
 def laberinto(mem):
     ids = {}
     lista = []
@@ -211,6 +280,11 @@ def laberinto(mem):
                 arregladas += 1
         if arregladas:
             print(f"  nivel {n:2}: {arregladas} celdas sin su objeto en el mapa")
+        con_trampilla, respaldo_trampilla = trampillas(mem, m, filas, t, pal)
+        for i, x in con_trampilla.items():
+            t[i] = x
+        if con_trampilla:
+            print(f"  nivel {n:2}: {len(con_trampilla) // 4} trampillas dibujadas")
         bloque = bytearray(BLOQUE_NIVEL)
         for i in range(filas * 32):
             t0 = t[i]
@@ -228,7 +302,9 @@ def laberinto(mem):
             # alterna los valores $38 y $39, y casi ningun mapa trae los dos:
             # el que falta es la del nivel dada la vuelta (parpadea igual).
             pareja = {0x38: 0x39, 0x39: 0x38}.get(v)
-            if v not in frecuentes[n] and pareja in frecuentes[n]:
+            if v in respaldo_trampilla:
+                r = respaldo_trampilla[v]
+            elif v not in frecuentes[n] and pareja in frecuentes[n]:
                 t0 = frecuentes[n][pareja]
                 r = bytes(t0[j * 16 + 15 - x] for j in range(16) for x in range(16))
             else:
@@ -408,6 +484,13 @@ SPRITES = {
     # poder; lo cambia V9_META_ELEGIR)
     64: (c16(304, Y0), None),
 }
+# El grafista solo dibujo la excavadora de lado: hacia abajo (14) es esa
+# girada un cuarto de vuelta y hacia arriba (15), la de abajo dada la
+# vuelta de arriba abajo.
+GIROS = {14: "abajo", 15: "arriba"}
+# Hacia arriba no hay izquierda ni derecha: el juego no usa el 6 (ni el 64)
+# reflejados, y sus patrones hacen falta para la excavadora.
+SIN_ESPEJO = (29, 30, 6, 64)
 
 
 def caja(puntos):
@@ -481,7 +564,7 @@ def sprites(mem):
     meta = {}
     for i in range(65):
         for espejo in (0, 1):
-            if espejo and i in (29, 30):
+            if espejo and i in SIN_ESPEJO:
                 continue                # el juego no los usa reflejados
             if i not in SPRITES:
                 meta[(i, espejo)] = []
@@ -494,6 +577,12 @@ def sprites(mem):
             q = bytes(15 if v == 9 else v for v in q)     # el rosa va al 15
             if reflejar:
                 q = bytes(q[j * w + w - 1 - k] for j in range(h) for k in range(w))
+            if i in GIROS:
+                # un cuarto de vuelta a la derecha: (k, j) -> (h - 1 - j, k)
+                q = bytes(q[(h - 1 - k) * w + j] for j in range(w) for k in range(h))
+                w, h = h, w
+                if GIROS[i] == "arriba":
+                    q = bytes(q[(h - 1 - j) * w + k] for j in range(h) for k in range(w))
             pts = [(k, j) for j in range(h) for k in range(w) if q[j * w + k]]
             if not pts:
                 meta[(i, espejo)] = []
@@ -509,7 +598,7 @@ def sprites(mem):
                     if any(ind):
                         partes.append((dx + px, dy + py, patron(ind)))
             meta[(i, espejo)] = partes
-    for i in (29, 30):
+    for i in SIN_ESPEJO:
         meta[(i, 1)] = meta[(i, 0)]
     # Fantasmas de colores, como en Pac-Man (V9_META_ELEGIR): el rojo y el
     # naranja (rosa con la paleta del TMS) con sus propios patrones; el

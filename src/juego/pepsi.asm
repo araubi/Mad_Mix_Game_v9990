@@ -259,7 +259,7 @@ V9_META_ELEGIR:
     ADD HL, DE
     RET
 .NO_FANTASMA:
-    LD DE, V9_META
+    CALL V9_PAC_AMARILLO        ; LD DE,V9_META (y el parpadeo, v9_portada.asm)
     LD A, (MODO_PEPSI)
     AND A
     JR NZ, .PEPSI_MODO
