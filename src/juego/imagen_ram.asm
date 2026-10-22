@@ -37,6 +37,7 @@ FIN_MOTOR:
     INCLUDE "volcado_haz.asm"   ; a continuacion
 
     INCLUDE "v9990_ext.asm"     ; ORG $0100 (RAM baja)
+    INCLUDE "pepsi.asm"         ; ORG $0F00, $7700 y $7FF0
 
     ; Compilacion de pruebas (tools/build.py --pruebas): GENERAR_ALEATORIO
     ; usa la semilla en vez del registro R, cuyo valor depende de cuantas
@@ -52,6 +53,9 @@ FIN_MOTOR:
     SAVEBIN "../../build/ram_6500.bin", $6500, FIN_VOLCADO_HAZ-$6500
     SAVEBIN "../../build/ram_8400.bin", START, FIN_MOTOR-START
     SAVEBIN "../../build/ram_0100.bin", $0100, FIN_V9990_EXT-$0100
+    SAVEBIN "../../build/ram_0f00.bin", MODO_PEPSI, FIN_PEPSI-MODO_PEPSI
+    SAVEBIN "../../build/ram_7700.bin", PEPSI_DELTA, FIN_PEPSI_DELTA-PEPSI_DELTA
+    SAVEBIN "../../build/ram_7ff0.bin", V9_META_ELEGIR, FIN_TEXTOS_PEPSI-V9_META_ELEGIR
 
     ; El logo se ensambla al final porque comparte direcciones con el
     ; motor ($9470); su volcado ya se hizo arriba.

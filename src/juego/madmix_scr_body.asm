@@ -3608,8 +3608,8 @@ RELLENAR_SOLIDO_AREA_JUEGO_BUFFER_VRAM:                       ; $5B8C
 ; --- Dispatch por bit de A (bits 1/3/4/5) hacia las 4 variantes del
 ; menu (pausa/disparo entre otras), guardado en pila desde GESTIONAR_INTRODUCCION. ---
 DESPACHAR_ACCION_MENU:
-    BIT 5, A
-    JP NZ, SELECCIONAR_OPCION_DEMO
+    JP PEPSI_DESPACHAR          ; PROYECTO: tecla 3 = cambiar de juego (pepsi.asm). Original:
+    DS 2, 0                     ; BIT 5,A / JP NZ,SELECCIONAR_OPCION_DEMO
     BIT 1, A
     JP NZ, SELECCIONAR_OPCION_REDEFINIR_TECLAS
     BIT 3, A
@@ -3638,21 +3638,8 @@ GESTIONAR_TIMEOUT_MENU:
 ; confundia con el submenu real de redefinir teclas, TAIL_KEYMENU_
 ; DRAW mas abajo). ---
 DIBUJAR_MENU_PRINCIPAL:                   ; $5BCC
-    LD HL, $0548
-    LD DE, TEXTO_OPCION_TECLADO
-    CALL DIBUJAR_TEXTO_VRAM
-    LD HL, $0748
-    LD DE, TEXTO_OPCION_JOYSTICK
-    CALL DIBUJAR_TEXTO_VRAM
-    LD HL, $0B48
-    LD DE, TEXTO_OPCION_REDEFINIR_TECLAS
-    CALL DIBUJAR_TEXTO_VRAM
-    LD HL, $0D48
-    LD DE, TEXTO_OPCION_DEMO
-    CALL DIBUJAR_TEXTO_VRAM
-    LD HL, $1048
-    LD DE, TEXTO_OPCION_JUGAR
-    JP DIBUJAR_TEXTO_VRAM
+    JP PEPSI_DIBUJAR_MENU       ; PROYECTO: menu con "3 MAD MIX GAME / THE PEPSI CHALLENGE" (pepsi.asm). Original:
+    DS 42, 0                    ; las 5 lineas en $0548, $0748, $0B48, $0D48 y $1048
 
     ; $5BF9-$5C39 (65 bytes): 5 registros de texto para
     ; DIBUJAR_MENU_PRINCIPAL: "1 TECLADO", "2 JOYSTICK",
@@ -3666,9 +3653,9 @@ TEXTO_OPCION_TECLADO:
 TEXTO_OPCION_JOYSTICK:
     DB $0C,$91,"2 JOYSTICK  "
 TEXTO_OPCION_REDEFINIR_TECLAS:
-    DB $11,$31,"3 REDEFINE TECLAS"
+    DB $11,$31,"4 REDEFINE TECLAS"     ; PROYECTO: era la opcion 3
 TEXTO_OPCION_DEMO:
-    DB $06,$C1,"4 DEMO"
+    DB $06,$C1,"5 DEMO"                ; PROYECTO: era la opcion 4
 TEXTO_OPCION_JUGAR:
     DB $09,$B1,"0 JUGAR  "
 
@@ -3741,11 +3728,13 @@ LEER_TECLAS_MENU_PRINCIPAL:                   ; $5C80
     ; fila/mascara) -- leen la misma tecla dos veces; el bit de la
     ; pareja 4 (bit 2 del resultado) no se comprueba en ningun sitio.
 TABLA_TECLAS_MENU_PRINCIPAL:
-    DB $F0,$10                 ; -> bit 5 del resultado: opcion 4 (demo)
+    ; PROYECTO: teclas 1-5 del menu nuevo. Original: $10 (demo), $02, $04,
+    ; $08 (sin uso), $08 (redefine teclas)
+    DB $F0,$20                 ; -> bit 5 del resultado: opcion 5 (demo)
     DB $F0,$02                 ; -> bit 4: opcion 2 (joystick)
     DB $F0,$04                 ; -> bit 3: opcion 1 (teclado)
-    DB $F0,$08                 ; -> bit 2: sin uso (nunca comprobado)
-    DB $F0,$08                 ; -> bit 1: opcion 3 (redefine teclas) -- misma tecla que la pareja anterior
+    DB $F0,$08                 ; -> bit 2: opcion 3 (Mad Mix Game / The Pepsi Challenge, PEPSI_DESPACHAR)
+    DB $F0,$10                 ; -> bit 1: opcion 4 (redefine teclas)
     DB $F0,$01                 ; -> bit 0: "0 JUGAR" (reanuda la partida)
 
 ; --- Rutina suelta: limpia el area principal de VRAM (patrones,

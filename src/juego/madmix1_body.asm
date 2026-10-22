@@ -2500,6 +2500,7 @@ REINICIAR_PARTIDA:                  ; CORREGIDO: se llega aqui por 2 caminos -- 
     LD (VIDAS_RESTANTES), A
     LD HL, 0
     LD (PUNTUACION), HL
+NIVEL_INICIAL:                  ; PROYECTO: pepsi.asm pone 2 con The Pepsi Challenge
     LD A, 1
     LD (NIVEL_ACTUAL), A
     XOR A
@@ -2552,6 +2553,7 @@ PANTALLA_PRESENTACION_NIVEL:          ; reentrada real (JP PANTALLA_PRESENTACION
     CALL   CARGAR_NIVEL
     LD     A,(NIVEL_ACTUAL)
     ADD    A,A
+NUMEROS_NIVEL_BASE:               ; PROYECTO: pepsi.asm resta 2 con The Pepsi Challenge (el 2 es la fase 1)
     LD     HL,TABLA_NUMEROS_NIVEL
     ADD    A,L
     LD     L,A
@@ -2756,6 +2758,7 @@ VERIFICAR_FIN_NIVEL:
                                    ; NIVEL 15 (CUERPO_L15). Solo al completarlo
                                    ; TAMBIEN (NIVEL_ACTUAL llega a 16) se resetea abajo.
     JR     NZ,SIGUIENTE_NIVEL            ; no ha llegado a 16 todavia (incluye el nivel 15, oculto) -> continua
+NIVEL_VUELTA:                     ; PROYECTO: pepsi.asm pone 2 con The Pepsi Challenge
     LD     (HL),1                  ; llego a 16 (completo tambien el nivel oculto) -> vuelve al nivel 1
     LD     A,(CONTADOR_VUELTAS_NIVELES)
     INC    A

@@ -30,13 +30,15 @@ RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
 BUILD = os.path.join(RAIZ, "build")
 BANCO = 0x4000
 FRAG = 0x800
+INICIO_CARGA = 0x1800          # offset en la ROM (banco 0, $5800) de la carga; igual que en rom.asm
 
 # (nombre de tabla, [(fichero, direccion destino)])
 TABLAS = [
     ("TABLA_LOGO", [("logotopo.bin", 0x9470)]),
     ("TABLA_JUEGO", [("ram_1000.bin", 0x1000), ("ram_6500.bin", 0x6500),
+                     ("ram_7700.bin", 0x7700), ("ram_7ff0.bin", 0x7FF0),
                      ("ram_8400.bin", 0x8400)]),
-    ("TABLA_EXT", [("ram_0100.bin", 0x0100)]),
+    ("TABLA_EXT", [("ram_0100.bin", 0x0100), ("ram_0f00.bin", 0x0F00)]),
 ]
 
 # Pantalla de carga para el TMS cuando hay GFX9000 (rom.asm, V9_LOGO_PREPARAR):
@@ -75,13 +77,16 @@ def main():
     datos = os.path.join(BUILD, "v9_datos.inc")
     if not os.path.exists(datos):
         open(datos, "w").write(DATOS_VACIOS)
+    for f, vacio in (("pepsi_delta.bin", b"\0\0"), ("v9_pepsi.inc", "V9_META_PEPSI: DS 68\n")):
+        if not os.path.exists(os.path.join(BUILD, f)):
+            open(os.path.join(BUILD, f), "wb" if isinstance(vacio, bytes) else "w").write(vacio)
     sjasmplus(os.path.join(RAIZ, "src", "juego"), "imagen_ram.asm")
     r = subprocess.run([sys.executable, os.path.join(RAIZ, "tools", "graficos.py")])
     if r.returncode:
         sys.exit("ERROR: tools/graficos.py fallo")
     sjasmplus(os.path.join(RAIZ, "src", "juego"), "imagen_ram.asm")
 
-    carga = bytearray()          # empieza en el banco 1 (offset ROM $4000)
+    carga = bytearray()          # empieza detras del cargador, en el banco 0
     lineas = ["; generado por tools/build.py -- no editar", ""]
     en_rom = {}                  # direccion en RAM -> (banco, direccion en la pagina 1)
     for nombre, tramos in TABLAS:
@@ -90,7 +95,7 @@ def main():
             datos = open(os.path.join(BUILD, fichero), "rb").read()
             pos = 0
             while pos < len(datos):
-                off_rom = BANCO + len(carga)
+                off_rom = INICIO_CARGA + len(carga)
                 banco, dentro = divmod(off_rom, BANCO)
                 n = min(FRAG, len(datos) - pos, BANCO - dentro)
                 for k in range(n):
@@ -121,7 +126,7 @@ def main():
         datos = open(os.path.join(BUILD, fichero), "rb").read()
         pos = 0
         while pos < len(datos):
-            off_rom = BANCO + len(carga)
+            off_rom = INICIO_CARGA + len(carga)
             banco, dentro = divmod(off_rom, BANCO)
             n = min(len(datos) - pos, BANCO - dentro)
             carga += datos[pos:pos + n]
@@ -137,8 +142,8 @@ def main():
 
     rom_path = os.path.join(BUILD, "madmix_v9990.rom")
     rom = bytearray(open(rom_path, "rb").read())
-    if len(rom) != BANCO:
-        sys.exit(f"ERROR: el banco 0 mide {len(rom)} bytes")
+    if len(rom) != INICIO_CARGA:
+        sys.exit(f"ERROR: el cargador mide {len(rom)} bytes")
     rom += carga
     tam = 0x10000
     while tam < len(rom):

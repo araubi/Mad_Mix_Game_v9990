@@ -863,11 +863,7 @@ V9_PREPARAR_SPRITES:
     JR Z, .SIN_ESPEJO
     INC A
 .SIN_ESPEJO:
-    LD L, A
-    LD H, 0
-    ADD HL, HL
-    LD DE, V9_META
-    ADD HL, DE
+    CALL V9_META_ELEGIR         ; HL -> V9_META[A] (o V9_META_PEPSI, pepsi.asm)
     LD E, (HL)
     INC HL
     LD D, (HL)                  ; DE -> n, (dx, dy, patron)...
@@ -1657,7 +1653,7 @@ V9_ESP_SUMAS:      DS 48
 V9_SPR_BUF:        DS V9_MAX_SPRITES * 4
     ASSERT HIGH V9_SPR_BUF == HIGH (V9_SPR_BUF + V9_MAX_SPRITES * 4)
 FIN_V9990_EXT:
-    ASSERT FIN_V9990_EXT <= $1000
+    ASSERT FIN_V9990_EXT <= MODO_PEPSI     ; pepsi.asm, $0F00
 
 ; Buferes de una fila de caracteres del TMS, en la zona libre de detras
 ; de volcado_haz.asm (no se cargan).

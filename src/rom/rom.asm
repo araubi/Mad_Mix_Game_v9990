@@ -47,6 +47,7 @@ V9_INICIAR    EQU $6C00         ; v9990.asm: detecta e inicia el V9990 (GFX9000)
 JIFFY         EQU $FC9E
 ENTRADA_LOGO  EQU $9470         ; ENTRADA_LOGOTOPO
 
+INICIO_CARGA EQU $5800         ; tools/build.py: INICIO_CARGA
     OUTPUT "../../build/madmix_v9990.rom"
 
     ORG $4000
@@ -1328,5 +1329,7 @@ MARCA_ASCII16:
     DUP 4
     LD ($77FF), A
     EDUP
-    DS $8000 - $, $FF
-    ; build.py anade a continuacion build/carga_util.bin (bancos 1..n)
+    ASSERT $ <= INICIO_CARGA
+    DS INICIO_CARGA - $, $FF
+    ; build.py anade a continuacion build/carga_util.bin (desde aqui, en
+    ; el banco 0, hasta el banco n)

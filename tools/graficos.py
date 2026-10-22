@@ -452,6 +452,7 @@ def sprites(mem):
                     if any(ind):
                         partes.append((dx + px, dy + py, patron(ind)))
             meta[(i, espejo)] = partes
+    meta_pepsi = sprites_pepsi(mem, sp, pal, patron)
     if len(patrones) > 256:
         sys.exit(f"ERROR: {len(patrones)} patrones de sprite, caben 256")
     bmp = bytearray(256 * 128)
@@ -461,7 +462,91 @@ def sprites(mem):
             o = (y0 + j) * 128 + x0 // 2
             bmp[o:o + 8] = empaquetar(ind[j * 16:j * 16 + 16])
     filas = (len(patrones) + 15) // 16 * 16
-    return bytes(bmp[:filas * 128]), pal, meta, len(patrones)
+    return bytes(bmp[:filas * 128]), pal, meta, meta_pepsi, len(patrones)
+
+
+# ----------------------------------------------------------------------
+#  The Pepsi Challenge (opcion 3 del menu): la mascota en lugar del
+#  comecocos. Sprites de la cinta inglesa (Topo / US Gold, 1988).
+# ----------------------------------------------------------------------
+PEPSI_IDS = list(range(12)) + list(range(57, 62))
+PEPSI_FLAGS = {0: 2, 1: 2, 2: 2, 7: 2, 8: 2, 9: 2}   # el resto, como en Mad Mix
+SPR_BASE = 0x953B                                      # sprite 0 (PTR_TABLA_SPRITES)
+
+
+def datos_pepsi():
+    d = open(os.path.join(RAIZ, "src", "juego", "data", "pepsi", "sprites_pepsi.bin"), "rb").read()
+    return {i: d[k * 144:(k + 1) * 144] for k, i in enumerate(PEPSI_IDS)}
+
+
+def sprites_pepsi(mem, sp, pal, patron):
+    """Partes (dx, dy, patron) de la mascota de Pepsi para el V9990: los
+    pixeles que la mascara borra en el amarillo del comecocos del remake y
+    los de tinta (las lineas, oscuras en el TMS) en negro, en la misma cuadricula de 24x24 que el
+    original. Al reflejar se respeta el hueco de la derecha (el byte de
+    indicador de PTR_TABLA_SPRITES)."""
+    x, y, w, h = SPRITES[0][0]
+    c = Counter(p for p in sp.crop((x, y, x + w, y + h)).getdata() if p != MAGENTA)
+    amarillo = cercano(ARREGLOS.get(c.most_common(1)[0][0], c.most_common(1)[0][0]), pal)
+    negro = cercano((0, 0, 0), pal)
+    meta = {}
+    for i, d in datos_pepsi().items():
+        hueco = PEPSI_FLAGS.get(i, mem[0x91C3 + i * 4 + 2]) & 7
+        ancho = max(c for r in range(24) for c in range(24)
+                    if (d[r * 6 + 3 + c // 8] >> (7 - c % 8)) & 1 or not (d[r * 6 + c // 8] >> (7 - c % 8)) & 1)
+        borde = max(23 - hueco, ancho)
+        # solo las vistas de lado tienen version reflejada propia (no
+        # caben mas patrones); las demas usan la misma
+        for espejo in ((0, 1) if i in PEPSI_FLAGS else (0,)):
+            q = [0] * (32 * 32)
+            for r in range(24):
+                for col in range(24):
+                    b = r * 6 + col // 8
+                    mascara = (d[b] >> (7 - col % 8)) & 1
+                    tinta = (d[b + 3] >> (7 - col % 8)) & 1
+                    if tinta or not mascara:
+                        cx = borde - col if espejo else col
+                        if True:
+                            q[r * 32 + cx] = negro if tinta else amarillo
+            partes = []
+            for py in (0, 16):
+                for px in (0, 16):
+                    ind = bytes(q[(py + j) * 32 + px + k] for j in range(16) for k in range(16))
+                    if any(ind):
+                        partes.append((px, py, patron(ind)))
+            meta[(i, espejo)] = partes
+        if i not in PEPSI_FLAGS:
+            meta[(i, 1)] = meta[(i, 0)]
+    return meta
+
+
+def delta_pepsi(mem):
+    """XOR entre los sprites de Mad Mix y los de Pepsi (0-61), en tramos
+    (saltar, n, n bytes); fin = (0, 0). Aplicarlo dos veces deja Mad Mix."""
+    pep = datos_pepsi()
+    a = bytes(mem[SPR_BASE:SPR_BASE + 62 * 144])
+    b = bytearray(a)
+    for i, d in pep.items():
+        b[i * 144:(i + 1) * 144] = d
+    x = bytes(p ^ q for p, q in zip(a, b))
+    out = bytearray()
+    k = 0
+    while k < len(x):
+        s = 0
+        while k < len(x) and x[k] == 0 and s < 255:
+            s += 1
+            k += 1
+        n = 0
+        while k + n < len(x) and x[k + n] != 0 and n < 255:
+            n += 1
+        if k >= len(x):
+            break
+        if n == 0 and s == 0:
+            continue
+        out += bytes((s, n)) + x[k:k + n]
+        k += n
+    out += b"\0\0"
+    return bytes(out)
 
 
 # ----------------------------------------------------------------------
@@ -493,7 +578,7 @@ def main():
     pal_marco = paleta_marco()
     capa = capa_a(pal_marco)
     bmp_portada, pal_portada = portada()
-    spr, pal_spr, meta, n_patrones = sprites(mem)
+    spr, pal_spr, meta, meta_pepsi, n_patrones = sprites(mem)
 
     # capa A: $06000-$0EBFF (glifos y marco) y la portada en $10000
     capa = bytearray(capa)
@@ -535,6 +620,21 @@ def main():
             L.append(f"V9_META_{i}_{e}:")
             L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))
     open(os.path.join(BUILD, "v9_datos.inc"), "w").write("\n".join(L) + "\n")
+
+    # Pepsi: XOR de los sprites para el TMS y partes para el V9990
+    open(os.path.join(BUILD, "pepsi_delta.bin"), "wb").write(delta_pepsi(mem))
+    L = ["; generado por tools/graficos.py -- no editar", "",
+         "; punteros (sprite*2 + espejo) de los sprites 0-11 y luego 57-61"]
+    L.append("V9_META_PEPSI:")
+    for i in PEPSI_IDS:
+        for e in (0, 1):
+            L.append(f"    DW V9_META_PEPSI_{i}_{e}")
+    for i in PEPSI_IDS:
+        for e in (0, 1):
+            partes = meta_pepsi[(i, e)]
+            L.append(f"V9_META_PEPSI_{i}_{e}:")
+            L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))
+    open(os.path.join(BUILD, "v9_pepsi.inc"), "w").write("\n".join(L) + "\n")
     print(f"graficos: {n_losetas} losetas, {n_patrones} patrones de sprite,"
           f" capa A {len(capa)} bytes, niveles {len(niveles_bin)} bytes")
 
