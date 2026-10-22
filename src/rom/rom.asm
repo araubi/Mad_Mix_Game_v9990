@@ -1303,9 +1303,119 @@ V9_SUBIR:
     ADD IX, DE
     JR .FRAGMENTO
 .FIN:
+    CALL V9_DESCOMPRIMIR
     XOR A
     LD (BANCO1_REG), A
     RET
+
+; --------------------------------------------------------------
+;  V9_DESCOMPRIMIR: la portada del V9990 (tools/lz.py) en la direccion
+;  $60000 del modo bitmap (fisicamente, los bytes pares en $30000 y los
+;  impares en $70000, zonas libres en el modo P1). Se escribe con el
+;  V9990 en modo B1 para que el reparto lo haga el propio V9990. Las
+;  copias se leen de la propia VRAM con el puntero de lectura (R#3-5),
+;  que es independiente del de escritura (R#0-2).
+; --------------------------------------------------------------
+PORTADA_VRAM EQU $60000         ; tools/graficos.py
+V9_DESCOMPRIMIR:
+    LD A, 6
+    OUT ($64), A
+    LD A, $82                   ; B1, 256 px, 8 bpp
+    OUT ($63), A
+    CALL .TODO
+    LD A, 6
+    OUT ($64), A
+    LD A, $05                   ; P1 otra vez
+    OUT ($63), A
+    RET
+.TODO:
+    LD A, (PORTADA_V9990)
+    LD (BANCO1_REG), A
+    LD (.BANCO), A
+    LD HL, (PORTADA_V9990 + 1)
+    XOR A
+    OUT ($64), A                ; R#0: puntero de escritura
+    LD (.DESTINO), A
+    LD (.DESTINO + 1), A
+    OUT ($63), A
+    OUT ($63), A
+    LD A, PORTADA_VRAM >> 16
+    LD (.DESTINO + 2), A
+    OUT ($63), A
+.TOKEN:
+    CALL .BYTE
+    AND A
+    RET Z
+    LD B, A
+    LD C, A
+    JP M, .COPIA
+.LITERAL:
+    CALL .BYTE
+    OUT ($60), A
+    DJNZ .LITERAL
+    LD A, C                     ; C = t bytes escritos
+    JR .AVANZAR
+.COPIA:
+    SUB 125
+    LD B, A                     ; longitud
+    CALL .BYTE
+    LD E, A
+    CALL .BYTE
+    LD D, A                     ; distancia
+    PUSH HL
+    LD HL, (.DESTINO)
+    AND A
+    SBC HL, DE
+    LD A, (.DESTINO + 2)
+    SBC A, 0
+    LD E, A
+    LD A, 3
+    OUT ($64), A                ; R#3: puntero de lectura
+    LD A, L
+    OUT ($63), A
+    LD A, H
+    OUT ($63), A
+    LD A, E
+    OUT ($63), A
+    POP HL
+    LD C, B
+.LEER:
+    IN A, ($60)
+    OUT ($60), A
+    DJNZ .LEER
+    LD A, C
+.AVANZAR:
+    ; destino += A
+    PUSH HL
+    LD HL, (.DESTINO)
+    ADD A, L
+    LD L, A
+    JR NC, .SIN_ACARREO
+    INC H
+    JR NZ, .SIN_ACARREO
+    LD A, (.DESTINO + 2)
+    INC A
+    LD (.DESTINO + 2), A
+.SIN_ACARREO:
+    LD (.DESTINO), HL
+    POP HL
+    JR .TOKEN
+; A = siguiente byte de la ROM, cambiando de banco al pasar de $7FFF
+.BYTE:
+    LD A, (HL)
+    INC HL
+    BIT 7, H
+    RET Z
+    LD H, $40
+    PUSH AF
+    LD A, (V9_DESCOMPRIMIR.BANCO)
+    INC A
+    LD (V9_DESCOMPRIMIR.BANCO), A
+    LD (BANCO1_REG), A
+    POP AF
+    RET
+.DESTINO: DS 3
+.BANCO:   DB 0
 
 ; --------------------------------------------------------------
     INCLUDE "../../build/tabla_carga.inc"

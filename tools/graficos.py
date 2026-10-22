@@ -20,8 +20,8 @@ juego) y Pillow. Genera en build/:
                             la loseta comodin del nivel
   v9_capa_a.bin    generador de la capa A desde $06000: patrones fijos
                    (transparente, negro), cifras, letras e icono de vida
-                   del marcador, el marco (desde $08000) y la portada
-                   (desde $10000)
+                   del marcador y el marco (desde $08000)
+  v9_portada.lz    portada en modo bitmap BP6 para $60000 (comprimida)
   v9_sprites.bin   patrones de sprite de 16x16 (SPRITES_VRAM)
   v9_datos.inc     paletas fijas y tabla de sprites por actor (RAM)
 
@@ -35,6 +35,7 @@ from collections import Counter
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(__file__))
+import lz  # noqa: E402
 import niveles  # noqa: E402
 
 RAIZ = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
@@ -336,19 +337,25 @@ def capa_a(pal):
     return bytes(bmp)
 
 
+PORTADA_VRAM = 0x60000           # modo bitmap: 256 x 212 a 8 bpp (BP6) y detras su paleta
+
+
 def portada():
-    """portada.SC5 (BSAVE de SCREEN 5) -> mapa de 212 lineas y paleta de 16 colores."""
-    d = open(ruta("portada.SC5"), "rb").read()
-    if d[0] != 0xFE:
-        sys.exit("ERROR: portada.SC5 no es un BSAVE")
-    datos = d[7:]
-    bmp = datos[:212 * 128]
-    p = datos[0x7680:0x7680 + 32]
-    pal = bytearray()
-    for i in range(16):
-        r, b, g = p[i * 2] >> 4 & 7, p[i * 2] & 7, p[i * 2 + 1] & 7
-        pal += bytes((r * 31 // 7, g * 31 // 7, b * 31 // 7))
-    return bmp, bytes(pal)
+    """portada.bmp del grafista (256 x 212, 62 colores) -> bytes para la
+    VRAM del V9990 en modo bitmap BP6: un byte por pixel (indice 1-62 de
+    la paleta; la 0 y la 63 son negras) y detras la paleta de 64 colores
+    (3 bytes de 5 bits). Va comprimido con lz.py."""
+    im = Image.open(ruta("portada.bmp")).convert("RGB")
+    if im.size != (256, 212):
+        sys.exit("ERROR: portada.bmp no mide 256 x 212")
+    colores = sorted(set(im.getdata()))
+    if len(colores) > 62:
+        sys.exit(f"ERROR: portada.bmp tiene {len(colores)} colores, caben 62")
+    indice = {c: i + 1 for i, c in enumerate(colores)}
+    pixeles = bytes(indice[p] for p in im.getdata())
+    pal = [(0, 0, 0)] + colores + [(0, 0, 0)] * (63 - len(colores))
+    paleta = b"".join(bytes(round(v * 31 / 255) for v in c) for c in pal)
+    return lz.comprimir(pixeles + paleta)
 
 
 # ----------------------------------------------------------------------
@@ -677,18 +684,15 @@ def main():
     losetas, niveles_bin, n_losetas = laberinto(mem)
     pal_marco = paleta_marco()
     capa = capa_a(pal_marco)
-    bmp_portada, pal_portada = portada()
+    portada_lz = portada()
     spr, pal_spr, meta, meta_pepsi, meta_color, n_patrones = sprites(mem)
 
-    # capa A: $06000-$0EBFF (glifos y marco) y la portada en $10000
-    capa = bytearray(capa)
-    o = (512 - 192) * 128
-    capa[o:o + len(bmp_portada)] = bmp_portada
 
     open(os.path.join(BUILD, "v9_losetas.bin"), "wb").write(losetas)
     open(os.path.join(BUILD, "v9_niveles.bin"), "wb").write(niveles_bin)
     open(os.path.join(BUILD, "v9_capa_a.bin"), "wb").write(bytes(capa).rstrip(b"\0"))
     open(os.path.join(BUILD, "v9_sprites.bin"), "wb").write(spr)
+    open(os.path.join(BUILD, "v9_portada.lz"), "wb").write(portada_lz)
 
     L = ["; generado por tools/graficos.py -- no editar", ""]
 
@@ -700,7 +704,6 @@ def main():
     tms_a = tabla_tms_a(pal_marco)
     db("V9_PALETA_MARCO", b"".join(c5(c) for c in pal_marco))
     db("V9_TMS_A_MARCO", bytes(tms_a))
-    db("V9_PALETA_PORTADA", pal_portada)
     db("V9_PALETA_SPRITES", b"".join(c5(c) for c in pal_spr))
     # tabla de sprites: 128 punteros (sprite*2 + espejo) a listas de
     # partes: n, y n veces (dx, dy, patron); el 64 (rojo hacia arriba) va

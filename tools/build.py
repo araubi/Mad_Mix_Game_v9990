@@ -37,7 +37,8 @@ TABLAS = [
     ("TABLA_LOGO", [("logotopo.bin", 0x9470)]),
     ("TABLA_JUEGO", [("ram_1000.bin", 0x1000), ("ram_6500.bin", 0x6500),
                      ("ram_7700.bin", 0x7700), ("ram_7ff0.bin", 0x7FF0),
-                     ("ram_8400.bin", 0x8400), ("ram_dda1.bin", 0xDDA1)]),
+                     ("ram_8400.bin", 0x8400), ("ram_dda1.bin", 0xDDA1),
+                     ("ram_f010.bin", 0xF010)]),
     ("TABLA_EXT", [("ram_0100.bin", 0x0100), ("ram_0f00.bin", 0x0F00)]),
 ]
 
@@ -54,7 +55,6 @@ VRAM = [("v9_capa_a.bin", 0x06000), ("v9_sprites.bin", 0x18000),
 
 DATOS_VACIOS = """; provisional (tools/build.py), lo sustituye tools/graficos.py
 V9_PALETA_MARCO:   DS 48
-V9_PALETA_PORTADA: DS 48
 V9_PALETA_SPRITES: DS 48
 V9_TMS_A_MARCO:    DS 16
 V9_META:           DS 256
@@ -77,7 +77,7 @@ def main():
     datos = os.path.join(BUILD, "v9_datos.inc")
     if not os.path.exists(datos):
         open(datos, "w").write(DATOS_VACIOS)
-    for f, vacio in (("pepsi_delta.bin", b"\0\0"), ("pepsi_subtablas.bin", b"\0\0"),
+    for f, vacio in (("v9_portada.lz", b"\0"), ("pepsi_delta.bin", b"\0\0"), ("pepsi_subtablas.bin", b"\0\0"),
                      ("pepsi_indicadores.bin", b"\0\0"), ("v9_pepsi.inc", "V9_META_PEPSI: DS 72\nV9_META_ROJO_ARRIBA: DS 13\nV9_META_F_ROJO: DS 72\nV9_META_F_NARANJA: DS 72\n")):
         if not os.path.exists(os.path.join(BUILD, f)):
             open(os.path.join(BUILD, f), "wb" if isinstance(vacio, bytes) else "w").write(vacio)
@@ -135,6 +135,12 @@ def main():
             lineas.append(f"    DB {v >> 16} : DW ${v & 0xFFFF:04X} : DB {banco} : DW ${0x4000 + dentro:04X}, {n}")
             pos += n
     lineas.append("    DB $FF")
+    lineas.append("")
+    # portada del V9990 comprimida (lz.py): seguida, aunque cruce bancos
+    off_rom = INICIO_CARGA + len(carga)
+    banco, dentro = divmod(off_rom, BANCO)
+    carga += open(os.path.join(BUILD, "v9_portada.lz"), "rb").read()
+    lineas.append(f"PORTADA_V9990: DB {banco} : DW ${0x4000 + dentro:04X}")
     lineas.append("")
     open(os.path.join(BUILD, "carga_util.bin"), "wb").write(carga)
     open(os.path.join(BUILD, "tabla_carga.inc"), "w").write("\n".join(lineas))

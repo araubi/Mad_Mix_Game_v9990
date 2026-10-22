@@ -347,5 +347,93 @@ V9_INDICADORES_ACTOR:
     RET
 
     INCLUDE "../../build/v9_pepsi.inc"
+
+; --------------------------------------------------------------
+;  Espejo del TMS mas rapido (f2g). V9_CELDAS: una linea de B celdas
+;  de V9_CONVERTIR_CELDAS (HL = patron de la primera celda en
+;  V9_BUF_PATRONES, D = celdas, E = color ya en V9_NT). Convierte el
+;  patron por cuartetos con V9_NT (2 bytes por cada 4 pixeles) y las
+;  celdas con patron 0, que son casi todas en los menus, de un golpe.
+; --------------------------------------------------------------
+V9_NT           EQU $7900       ; 32 bytes; con el V9990 esta zona de PEPSI_DELTA no se usa
+V9_BG_C         EQU V9_NT + 32  ; ultimo color de fondo de una celda vacia
+V9_BG_BYTE      EQU V9_NT + 33  ; y sus 2 pixeles
+V9_CELDAS:
+    LD B, HIGH V9_NT
+    LD A, $FF
+    LD (V9_BG_C), A
+.CELDA:
+    LD A, (HL)                  ; patron
+    AND A
+    JR Z, .CERO
+    INC H
+    LD A, (HL)                  ; color
+    DEC H
+    CP E
+    CALL NZ, V9_NT_COLOR
+    LD A, (HL)
+    RRCA
+    RRCA
+    RRCA
+    AND $1E
+    LD C, A
+    LD A, (BC)
+    OUT (V9_VRAM), A
+    INC C
+    LD A, (BC)
+    OUT (V9_VRAM), A
+    LD A, (HL)
+    ADD A, A
+    AND $1E
+    LD C, A
+    LD A, (BC)
+    OUT (V9_VRAM), A
+    INC C
+    LD A, (BC)
+    OUT (V9_VRAM), A
+.SIGUE:
+    LD A, L
+    ADD A, 8
+    LD L, A
+    DEC D
+    JR NZ, .CELDA
+    RET
+; celda vacia: solo cuenta el fondo
+.CERO:
+    INC H
+    LD A, (HL)
+    DEC H
+    AND $0F
+    LD C, A
+    LD A, (V9_BG_C)
+    CP C
+    CALL NZ, .FONDO
+    LD A, (V9_BG_BYTE)
+    OUT (V9_VRAM), A
+    OUT (V9_VRAM), A
+    OUT (V9_VRAM), A
+    OUT (V9_VRAM), A
+    JR .SIGUE
+.FONDO:
+    LD A, C
+    LD (V9_BG_C), A
+    PUSH HL
+    LD HL, (V9_MAPA)
+    ADD A, L
+    LD L, A
+    JR NC, .SIN_ACARREO
+    INC H
+.SIN_ACARREO:
+    LD A, (HL)
+    LD C, A
+    RLCA
+    RLCA
+    RLCA
+    RLCA
+    OR C
+    LD (V9_BG_BYTE), A
+    POP HL
+    RET
+
 FIN_V9_PEPSI:
     ASSERT FIN_V9_PEPSI <= TEXTO_OPCION_MAD_MIX

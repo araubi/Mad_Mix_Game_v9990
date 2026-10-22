@@ -48,7 +48,6 @@ V9_PAT_CIFRAS   EQU 800
 V9_PAT_LETRAS   EQU 864
 V9_PAT_VIDA     EQU 928
 V9_PAT_MARCO    EQU 1024
-V9_PAT_PORTADA  EQU 2048
 
     ORG $0100
 ; Tabla de 4 bytes para convertir 2 pixeles del TMS (debe empezar en
@@ -235,6 +234,7 @@ V9_PONER_MODO:
     PUSH HL
     PUSH DE
     PUSH BC
+    CALL V9_PORTADA_SALIR       ; v9_portada.asm: vuelta al modo P1
     LD (V9_MODO), A
     CALL V9_CAPA_B_NEGRA
     CALL V9_OCULTAR_SPRITES
@@ -257,6 +257,7 @@ V9_PONER_MODO:
     CALL V9_ESCRIBIR_REG
     LD DE, -32                  ; fila 1 = patrones 0-31
     CALL V9_NOMBRES_A
+    CALL V9_ESPEJO_OCULTAR      ; v9_portada.asm: se ve cuando esta entero
     LD HL, V9_ESP_VALIDA
     LD B, 24
 .INVALIDAR:
@@ -265,18 +266,9 @@ V9_PONER_MODO:
     DJNZ .INVALIDAR
     JR .FIN
 .PORTADA:
-    LD A, 48
-    LD C, 16
-    LD HL, V9_PALETA_PORTADA
-    CALL V9_CARGAR_PALETA
-    LD B, 13
-    LD A, $07                   ; capa A con la paleta 48-63
-    CALL V9_ESCRIBIR_REG
-    LD B, 8
-    LD A, $C2
-    CALL V9_ESCRIBIR_REG
-    LD DE, V9_PAT_PORTADA
-    CALL V9_NOMBRES_A
+    XOR A
+    LD (V9_SPR_LISTOS), A       ; en modo bitmap no se sube la tabla de sprites
+    CALL V9_PORTADA_ENTRAR      ; v9_portada.asm: modo bitmap
     JR .FIN
 .JUEGO:
     LD A, 48
@@ -1229,53 +1221,7 @@ V9_CONVERTIR_CELDAS:
     LD E, A
     LD A, (.N)
     LD D, A                     ; celdas
-.CELDA:
-    INC H
-    LD A, (HL)                  ; color
-    DEC H
-    CP E
-    CALL NZ, .TABLA
-    PUSH DE
-    LD D, (HL)                  ; patron
-    LD B, HIGH V9_T4
-    XOR A
-    SLA D
-    RLA
-    SLA D
-    RLA
-    LD C, A
-    LD A, (BC)
-    OUT (V9_VRAM), A
-    XOR A
-    SLA D
-    RLA
-    SLA D
-    RLA
-    LD C, A
-    LD A, (BC)
-    OUT (V9_VRAM), A
-    XOR A
-    SLA D
-    RLA
-    SLA D
-    RLA
-    LD C, A
-    LD A, (BC)
-    OUT (V9_VRAM), A
-    XOR A
-    SLA D
-    RLA
-    SLA D
-    RLA
-    LD C, A
-    LD A, (BC)
-    OUT (V9_VRAM), A
-    POP DE
-    LD A, L
-    ADD A, 8
-    LD L, A
-    DEC D
-    JR NZ, .CELDA
+    CALL V9_CELDAS              ; pepsi.asm (zona $8347)
     EI
     LD A, E
     LD (.ULTIMO), A
@@ -1357,12 +1303,14 @@ V9_PASO_ESPEJO:
     LD A, (V9_MODO)
     CP MODO_ESPEJO
     RET NZ
+    PUSH HL                     ; HL se conserva siempre (ESPERAR_TECLA_NUEVA
+                                ; tiene en HL el puntero de la tabla de teclas)
     LD A, (CONTADOR_FRAMES)
     LD HL, V9_ULTIMO_PASO
     CP (HL)
-    RET Z
     LD (HL), A
-    PUSH HL
+    CALL Z, V9_FILA_PENDIENTE   ; pepsi.asm: una fila sin copiar no espera al frame
+    JR Z, .FIN
     PUSH DE
     PUSH BC
     PUSH IX
@@ -1370,6 +1318,7 @@ V9_PASO_ESPEJO:
     POP IX
     POP BC
     POP DE
+.FIN:
     POP HL
     RET
 
@@ -1423,33 +1372,7 @@ V9_PASO:
     LD HL, V9_MAPA_TMS
     LD (V9_MAPA), HL
     LD A, C
-    PUSH AF
-    LD BC, 32 * 256 + 0
-    CALL V9_CONVERTIR_CELDAS
-    ; nombres de la fila (fila + 1 de la capa A): patrones fila*32 + c
-    POP AF
-    LD L, A
-    LD H, 0
-    ADD HL, HL
-    ADD HL, HL
-    ADD HL, HL
-    ADD HL, HL
-    ADD HL, HL
-    EX DE, HL
-    INC A
-    LD H, A
-    LD L, 0
-    CALL V9_DIRECCION_NOMBRE_A
-    LD B, 32
-.NOMBRE:
-    LD A, E
-    OUT (V9_VRAM), A
-    LD A, D
-    OUT (V9_VRAM), A
-    INC DE
-    DJNZ .NOMBRE
-    EI
-    RET
+    JP V9_FILA_A_CAPA           ; v9_portada.asm
 
 V9_MAPA_TMS:
     DB 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15
@@ -1639,6 +1562,20 @@ V9_BORRAR_OVERLAY:
 ; --------------------------------------------------------------
     INCLUDE "../../build/v9_datos.inc"
 
+; Z si la fila que toca ya esta copiada (entonces se espera al frame
+; siguiente); NZ si esta pendiente (pantalla recien limpiada).
+V9_FILA_PENDIENTE:
+    PUSH HL
+    PUSH DE
+    LD HL, (V9_ESP_FILA)
+    LD H, 0
+    LD DE, V9_ESP_VALIDA
+    ADD HL, DE
+    LD A, (HL)
+    POP DE
+    POP HL
+    CP 1
+    RET
 ; --------------------------------------------------------------
 ;  Variables
 ; --------------------------------------------------------------
@@ -1654,6 +1591,9 @@ V9_MAPA:           DW V9_MAPA_TMS
 V9_ESP_FILA:       DB 0
 V9_ESP_VALIDA:     DS 24
 V9_ESP_SUMAS:      DS 48
+    IF HIGH $ != HIGH ($ + V9_MAX_SPRITES * 4)
+    ALIGN 256                   ; V9_SPR_BUF no cruza un limite de pagina
+    ENDIF
 V9_SPR_BUF:        DS V9_MAX_SPRITES * 4
     ASSERT HIGH V9_SPR_BUF == HIGH (V9_SPR_BUF + V9_MAX_SPRITES * 4)
 FIN_V9990_EXT:

@@ -272,6 +272,16 @@ V9_PULSACION:
     CALL NZ, V9_PASO_ESPEJO
     JP COMPROBAR_PULSACION
 
+; ESPERAR_TECLA_NUEVA (redefinir teclas): cada vuelta del teclado da
+; un paso del espejo; sin el, la pantalla del V9990 no se actualiza
+; mientras se espera la tecla. Sustituye a LD DE,$F000.
+V9_ESCANEO:
+    LD A, (V9_PRESENTE)
+    AND A
+    CALL NZ, V9_PASO_ESPEJO
+    LD DE, $F000
+    RET
+
 ; Volcado de cada tic (VOLCAR_TRAS_FLANCO): con el V9990 no se vuelca
 ; nada al TMS; V9_TIC actualiza el V9990.
 V9_VOLCADO:

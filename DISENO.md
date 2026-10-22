@@ -269,3 +269,31 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   bola de poder la mascota de Pepsi usa la paleta del TMS, donde el 9 es
   rojo (algo más rojo que el del TMS: 31, 8, 6). Vulnerables y muertos,
   como estaban.
+
+## 11. f2g: primeros reportes del testeo en hardware real (2026-10-22)
+
+- **Redefinir teclas se colgaba (V9990).** `V9_PASO_ESPEJO`, cuando no
+  tocaba copiar fila, volvía con HL = `V9_ULTIMO_PASO`. `ESPERAR_TECLA_NUEVA`
+  guarda en HL el puntero de `TABLA_TECLAS_MSX` y llama antes a
+  `ESPERAR_TECLA_SOLTADA` (que pasa por `V9_PULSACION`): la tecla se
+  escribía encima de `V9_ISR` ($6C0B, el `PUSH AF`) y el juego acababa
+  reiniciándose. Venía de antes de f2b. Ahora HL se conserva siempre, y la
+  espera de tecla nueva (`V9_ESCANEO`, en lugar de `LD DE,$F000`) también
+  da pasos del espejo, para que la pantalla de redefinir se vea.
+- **Portada nueva de 62 colores (V9990).** `graficos/remake/portada.bmp`
+  (la del grafista) se muestra en el modo bitmap B1 (256 × 212, 8 bpp,
+  BP6) en vez de la de 16 colores del SCREEN 5. `tools/lz.py` la comprime
+  (16 KB) y `V9_DESCOMPRIMIR` (`rom.asm`) la deja al arrancar en la
+  dirección `$60000` del modo bitmap, con el V9990 en B1 para que reparta
+  los bytes (pares en `$30000`, impares en `$70000` del modo P1, libres) y
+  leyendo las copias de la propia VRAM. `v9_portada.asm` ($F010, detrás
+  del lienzo del TMS) cambia de modo al entrar y salir de la portada y
+  guarda y repone la paleta del juego. Se libera la portada de la capa A.
+- **Menú más rápido (V9990).** El espejo convierte por cuartetos con una
+  tabla de 16 entradas (`V9_NT`, $7900), las celdas vacías no se
+  convierten (`V9_FILA_A_CAPA`: su nombre es el patrón negro), las filas
+  pendientes no esperan al frame siguiente y, tras limpiar la pantalla,
+  la paleta 0-15 queda en negro hasta que están todas: el menú aparece
+  entero de golpe (unos 0,9 s en openMSX, antes lo pintaba fila a fila en
+  1,3 s o más).
+- Sin GFX9000 la partida es idéntica a f1c (C-BIOS MSX1 y MSX2).
