@@ -216,11 +216,13 @@ V9_TABLA_REGISTROS:
     DB 27, 0, 28, 0             ; sin prioridad por zonas
     DB $FF
 
-; Colores del TMS9918 en 5 bits por componente (R, G, B).
+; Colores del TMS9918 en 5 bits por componente (R, G, B). El 9 (rojo
+; claro) algo mas rojo: es tambien la mascota de Pepsi con la bola de
+; poder (V9_META_ELEGIR).
 V9_PALETA_TMS:
     DB  0,  0,  0,   0,  0,  0,   4, 25,  8,  11, 27, 15
     DB 10, 10, 29,  15, 14, 31,  26, 10,  9,   8, 29, 30
-    DB 31, 10, 10,  31, 15, 15,  26, 24, 10,  28, 25, 16
+    DB 31, 10, 10,  31,  8,  6,  26, 24, 10,  28, 25, 16
     DB  4, 22,  7,  25, 11, 23,  25, 25, 25,  31, 31, 31
 
 ; --------------------------------------------------------------
@@ -418,7 +420,7 @@ V9_ACTOR_EXT:
     INC HL
     POP AF
     PUSH AF
-    LD (HL), A
+    CALL V9_INDICADORES_ACTOR   ; pepsi.asm: indicadores y color del fantasma
 .FIN:
     POP AF
     POP HL
@@ -913,7 +915,8 @@ V9_PREPARAR_SPRITES:
     LD (IY+2), L
     LD A, H
     AND $03
-    OR $A0                      ; paleta 32-47, detras de la capa A
+.ATRIB:
+    OR $A0                      ; paleta 32-47 (o 0-15, V9_META_ELEGIR), detras de la capa A
     LD (IY+3), A
     ; y
     LD A, (DE)

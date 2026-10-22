@@ -78,7 +78,7 @@ def main():
     if not os.path.exists(datos):
         open(datos, "w").write(DATOS_VACIOS)
     for f, vacio in (("pepsi_delta.bin", b"\0\0"), ("pepsi_subtablas.bin", b"\0\0"),
-                     ("pepsi_indicadores.bin", b"\0\0"), ("v9_pepsi.inc", "V9_META_PEPSI: DS 72\nV9_META_ROJO_ARRIBA: DS 13\n")):
+                     ("pepsi_indicadores.bin", b"\0\0"), ("v9_pepsi.inc", "V9_META_PEPSI: DS 72\nV9_META_ROJO_ARRIBA: DS 13\nV9_META_F_ROJO: DS 72\nV9_META_F_NARANJA: DS 72\n")):
         if not os.path.exists(os.path.join(BUILD, f)):
             open(os.path.join(BUILD, f), "wb" if isinstance(vacio, bytes) else "w").write(vacio)
     sjasmplus(os.path.join(RAIZ, "src", "juego"), "imagen_ram.asm")

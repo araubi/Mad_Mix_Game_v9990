@@ -219,12 +219,46 @@ FIN_PEPSI_TABLAS:
 ;  Devuelve HL -> puntero a las partes del actor: V9_META o, con The
 ;  Pepsi Challenge, V9_META_PEPSI para los sprites 0-11, 57-61 y 63. Con
 ;  Mad Mix, el 6 (hacia arriba) con la bola de poder (MODO_ESPECIAL 1,
-;  el que elige la subtabla de direccion B) es el rojo.
+;  el que elige la subtabla de direccion B) es el rojo; con The Pepsi
+;  Challenge la mascota va con la paleta del TMS (roja). Los fantasmas
+;  normales salen de colores. Deja en V9_PREPARAR_SPRITES.ATRIB la paleta
+;  del sprite. IX -> el actor en V9_ACTORES.
 ; --------------------------------------------------------------
     ORG SOMBRA_MATRIZ + 928
 V9_META_ELEGIR:
     LD L, A
     LD H, 0
+    LD A, $A0                   ; paleta 32-47 (la de los sprites)
+    LD (V9_PREPARAR_SPRITES.ATRIB + 1), A
+    ; fantasmas de colores: 0 rojo, 1 rosa, 2 cian (el del grafista), 3
+    ; naranja (bits 0-1 de los indicadores, V9_INDICADORES_ACTOR)
+    LD A, L
+    SUB 27 * 2
+    CP 12
+    JR NC, .NO_FANTASMA
+    LD E, A
+    CP 9                        ; 31 y 32 reflejados: los blancos, como estan
+    JR Z, .NO_FANTASMA
+    CP 11
+    JR Z, .NO_FANTASMA
+    LD A, (IX+3)
+    AND $03
+    CP 2
+    JR Z, .NO_FANTASMA
+    LD HL, V9_META_F_ROJO
+    AND A
+    JR Z, .COLOR
+    LD HL, V9_META_F_NARANJA
+    DEC A
+    JR NZ, .COLOR
+    LD A, $20                   ; rosa: el naranja con la paleta del TMS
+    LD (V9_PREPARAR_SPRITES.ATRIB + 1), A
+.COLOR:
+    LD D, 0
+    ADD HL, DE
+    ADD HL, DE
+    RET
+.NO_FANTASMA:
     LD DE, V9_META
     LD A, (MODO_PEPSI)
     AND A
@@ -242,6 +276,25 @@ V9_META_ELEGIR:
 .ROJO:
     DW V9_META_ROJO_ARRIBA
 .PEPSI_MODO:
+    ; con la bola de poder, la mascota en rojo: la paleta del TMS tiene
+    ; rojo claro donde la de los sprites tiene su amarillo
+    LD A, (MODO_ESPECIAL)
+    AND $07
+    DEC A
+    JR NZ, .PEPSI_MAPA
+    LD A, L
+    CP 24
+    JR C, .PEPSI_ROJA           ; 0-11
+    CP 57 * 2
+    JR Z, .PEPSI_ROJA
+    CP 57 * 2 + 1
+    JR Z, .PEPSI_ROJA
+    CP 63 * 2
+    JR C, .PEPSI_MAPA
+.PEPSI_ROJA:
+    LD A, $20
+    LD (V9_PREPARAR_SPRITES.ATRIB + 1), A
+.PEPSI_MAPA:
     LD A, L
     CP 24
     JR C, .PEPSI                ; sprites 0-11
@@ -260,6 +313,37 @@ V9_META_ELEGIR:
 .INDICE:
     ADD HL, HL
     ADD HL, DE
+    RET
+
+; --------------------------------------------------------------
+;  V9_INDICADORES_ACTOR: desde V9_ACTOR_EXT (A = indicadores, B = sprite,
+;  HL -> donde se guardan, IX = la entrada del fantasma en
+;  TABLA_ITEMS_PELMAZOIDE). Guarda los bits 5-7 y, en los fantasmas
+;  normales (27-32), su color en los bits 0-1: el numero de la entrada
+;  (de 7 bytes) and 3. Conserva BC, DE e IX.
+; --------------------------------------------------------------
+V9_INDICADORES_ACTOR:
+    AND $E0
+    LD (HL), A
+    LD A, B
+    SUB 27
+    CP 6
+    RET NC
+    PUSH BC
+    PUSH IX
+    POP BC
+    LD A, C
+    SUB LOW TABLA_ITEMS_PELMAZOIDE
+    LD C, -1
+.DIVIDIR:
+    INC C
+    SUB 7
+    JR NC, .DIVIDIR
+    LD A, C
+    AND $03
+    OR (HL)
+    LD (HL), A
+    POP BC
     RET
 
     INCLUDE "../../build/v9_pepsi.inc"

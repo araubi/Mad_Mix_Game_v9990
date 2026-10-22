@@ -42,6 +42,7 @@ BUILD = os.path.join(RAIZ, "build")
 REMAKE = os.path.join(RAIZ, "graficos", "remake")
 
 MAGENTA = (0xFF, 0x00, 0xF6)
+CIAN, CIAN_SOMBRA, ROJO = (76, 221, 254), (40, 111, 178), (203, 49, 7)   # sprites del remake
 # Colores casi iguales que el grafista uso por descuido (ANALISIS.md)
 ARREGLOS = {(0xFE, 0xFE, 0xFE): (0xFF, 0xFF, 0xFF), (0xED, 0xED, 0x2D): (0xFC, 0xFC, 0x6F),
             (0xFF, 0xFF, 0x00): (0xFC, 0xFC, 0x6F), (0xDF, 0xDF, 0x2F): (0xFC, 0xFC, 0x6F)}
@@ -440,6 +441,26 @@ def sprites(mem):
     if len(pal) > 16:
         sys.exit(f"ERROR: los sprites usan {len(pal) - 1} colores")
     pal += [(0, 0, 0)] * (16 - len(pal))
+    # Entradas fijas para los colores nuevos (V9_META_ELEGIR elige la paleta
+    # de cada sprite: 32-47 o la del TMS, 0-15):
+    #  9  amarillo de la mascota de Pepsi (en la del TMS, rojo claro: la
+    #     mascota roja con la bola de poder); el rosa que estaba va al 15
+    #  12 rojo oscuro (sombra del fantasma rojo)
+    #  13, 6, 14: cuerpo, sombra y ojos del fantasma naranja; en la del
+    #     TMS, el rosa (magenta, rojo oscuro, gris)
+    esperado = {1: (0, 0, 0), 3: CIAN_SOMBRA, 5: CIAN, 6: (93, 93, 93), 8: ROJO,
+                10: (252, 252, 111), 11: (255, 255, 255)}
+    for k, v in esperado.items():
+        if pal[k] != v:
+            sys.exit(f"ERROR: color {k} de los sprites {pal[k]}, se esperaba {v}")
+    if len(colores) > 11:
+        sys.exit("ERROR: los sprites ya usan las entradas 12-15")
+    pal_q = list(pal)           # la de cuantizar (sin repetidos)
+    pal[15] = pal[9]
+    pal[9] = pal[10]
+    pal[12] = (120, 24, 8)
+    pal[13] = (255, 160, 40)
+    pal[14] = (255, 255, 255)
 
     patrones = []
     vistos = {}
@@ -453,6 +474,8 @@ def sprites(mem):
     meta = {}
     for i in range(65):
         for espejo in (0, 1):
+            if espejo and i in (29, 30):
+                continue                # el juego no los usa reflejados
             if i not in SPRITES:
                 meta[(i, espejo)] = []
                 continue
@@ -460,7 +483,8 @@ def sprites(mem):
             r = (b if espejo else a) or a
             reflejar = espejo and not b
             x, y, w, h = r
-            q, _, _ = cuantizar(sp.crop((x, y, x + w, y + h)), pal, MAGENTA)
+            q, _, _ = cuantizar(sp.crop((x, y, x + w, y + h)), pal_q, MAGENTA)
+            q = bytes(15 if v == 9 else v for v in q)     # el rosa va al 15
             if reflejar:
                 q = bytes(q[j * w + w - 1 - k] for j in range(h) for k in range(w))
             pts = [(k, j) for j in range(h) for k in range(w) if q[j * w + k]]
@@ -478,6 +502,20 @@ def sprites(mem):
                     if any(ind):
                         partes.append((dx + px, dy + py, patron(ind)))
             meta[(i, espejo)] = partes
+    for i in (29, 30):
+        meta[(i, 1)] = meta[(i, 0)]
+    # Fantasmas de colores, como en Pac-Man (V9_META_ELEGIR): el rojo y el
+    # naranja (rosa con la paleta del TMS) con sus propios patrones; el
+    # cian es el del grafista. Los 31 y 32 reflejados (blancos) no cambian.
+    meta_color = {}
+    for nombre, cambio in (("ROJO", {5: 8, 3: 12}), ("NARANJA", {5: 13, 3: 6, 11: 14})):
+        for i in range(27, 33):
+            for e in (0, 1):
+                partes = meta[(i, e)]
+                if not (e and i in (31, 32)):
+                    partes = [(dx, dy, patron(bytes(cambio.get(v, v) for v in patrones[p])))
+                              for dx, dy, p in partes]
+                meta_color[(nombre, i, e)] = partes
     meta_pepsi = sprites_pepsi(mem, sp, pal, patron)
     if len(patrones) > 256:
         sys.exit(f"ERROR: {len(patrones)} patrones de sprite, caben 256")
@@ -488,7 +526,7 @@ def sprites(mem):
             o = (y0 + j) * 128 + x0 // 2
             bmp[o:o + 8] = empaquetar(ind[j * 16:j * 16 + 16])
     filas = (len(patrones) + 15) // 16 * 16
-    return bytes(bmp[:filas * 128]), pal, meta, meta_pepsi, len(patrones)
+    return bytes(bmp[:filas * 128]), pal, meta, meta_pepsi, meta_color, len(patrones)
 
 
 # ----------------------------------------------------------------------
@@ -527,7 +565,7 @@ def sprites_pepsi(mem, sp, pal, patron):
     indicador de PTR_TABLA_SPRITES)."""
     x, y, w, h = SPRITES[0][0]
     c = Counter(p for p in sp.crop((x, y, x + w, y + h)).getdata() if p != MAGENTA)
-    amarillo = cercano(ARREGLOS.get(c.most_common(1)[0][0], c.most_common(1)[0][0]), pal)
+    amarillo = 9                # ver sprites(): rojo claro en la paleta del TMS
     negro = cercano((0, 0, 0), pal)
     meta = {}
     for i, d in datos_pepsi().items():
@@ -640,7 +678,7 @@ def main():
     pal_marco = paleta_marco()
     capa = capa_a(pal_marco)
     bmp_portada, pal_portada = portada()
-    spr, pal_spr, meta, meta_pepsi, n_patrones = sprites(mem)
+    spr, pal_spr, meta, meta_pepsi, meta_color, n_patrones = sprites(mem)
 
     # capa A: $06000-$0EBFF (glifos y marco) y la portada en $10000
     capa = bytearray(capa)
@@ -700,6 +738,17 @@ def main():
             partes = meta_pepsi[(i, e)]
             L.append(f"V9_META_PEPSI_{i}_{e}:")
             L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))
+    for nombre in ("ROJO", "NARANJA"):
+        L.append(f"; fantasma {nombre.lower()}: punteros de los sprites 27-32 (sprite*2 + espejo)")
+        L.append(f"V9_META_F_{nombre}:")
+        for i in range(27, 33):
+            for e in (0, 1):
+                L.append(f"    DW V9_META_F_{nombre}_{i}_{e}")
+        for i in range(27, 33):
+            for e in (0, 1):
+                partes = meta_color[(nombre, i, e)]
+                L.append(f"V9_META_F_{nombre}_{i}_{e}:")
+                L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))
     partes = meta[(64, 0)]
     L.append("V9_META_ROJO_ARRIBA:")
     L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))

@@ -255,3 +255,17 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   el V9990, `V9_FANTASMAS_BLANCOS` los cambia al arrancar por el 31 y el 32
   reflejados, que en `V9_META` son los dibujos blancos de espaldas del
   grafista. En el TMS no cambia nada.
+- **Fantasmas de colores y mascota roja (f2f, V9990).** Como en Pac-Man:
+  rojo, rosa, cian (el del grafista) y naranja, según la entrada del
+  fantasma en `TABLA_ITEMS_PELMAZOIDE` (and 3). `V9_INDICADORES_ACTOR`
+  guarda ese número en los bits 0-1 de los indicadores del actor y
+  `V9_META_ELEGIR` elige las partes (`V9_META_F_ROJO`, `V9_META_F_NARANJA`:
+  los mismos dibujos con otros colores) y la paleta del sprite (se escribe
+  en `V9_PREPARAR_SPRITES.ATRIB`): el rosa es el naranja con la paleta del
+  TMS (0-15), que en partida no usa nadie. Así caben en 253 patrones (los
+  29 y 30 reflejados, que el juego no usa, ya no tienen los suyos).
+  Paleta de sprites: 9 = amarillo de la mascota de Pepsi (el rosa del
+  hipopótamo pasa al 15), 12 rojo oscuro, 13 naranja, 14 blanco. Con la
+  bola de poder la mascota de Pepsi usa la paleta del TMS, donde el 9 es
+  rojo (algo más rojo que el del TMS: 31, 8, 6). Vulnerables y muertos,
+  como estaban.
