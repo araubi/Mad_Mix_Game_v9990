@@ -54,7 +54,8 @@ FIN_MOTOR:
     SAVEBIN "../../build/ram_8400.bin", START, FIN_MOTOR-START
     SAVEBIN "../../build/ram_0100.bin", $0100, FIN_V9990_EXT-$0100
     SAVEBIN "../../build/ram_0f00.bin", MODO_PEPSI, FIN_PEPSI-MODO_PEPSI
-    SAVEBIN "../../build/ram_7700.bin", PEPSI_DELTA, FIN_PEPSI_DELTA-PEPSI_DELTA
+    SAVEBIN "../../build/ram_7700.bin", PEPSI_DELTA, FIN_PEPSI_SPR63-PEPSI_DELTA
+    SAVEBIN "../../build/ram_dda1.bin", PEPSI_SUBTABLAS, FIN_PEPSI_TABLAS-PEPSI_SUBTABLAS
     SAVEBIN "../../build/ram_7ff0.bin", V9_META_ELEGIR, FIN_TEXTOS_PEPSI-V9_META_ELEGIR
 
     ; El logo se ensambla al final porque comparte direcciones con el

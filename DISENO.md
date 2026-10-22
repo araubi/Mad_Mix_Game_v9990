@@ -194,3 +194,58 @@ atiende allí un fin de pantalla pendiente del V9990.
 **Pendiente.** Probar en máquina real; los menús tardan algo más de un
 segundo en copiarse (hay pocos puntos seguros donde leer el TMS); los
 fantasmas usan todos el mismo dibujo del grafista.
+
+## 8. f2b: fantasmas, logo de Topo y pantalla de carga (2026-10-22)
+
+- Fantasmas: estaban cambiados el dibujo normal y el girado del grafista
+  (`SPRITES` en `tools/graficos.py`).
+- Logo de Topo en el V9990: sus `WRTVRM`/`LDIRMV` pasan por las entradas
+  `$E000`/`$E003` del cargador, que escriben en copias en RAM y marcan las
+  celdas cambiadas; en las 5 pausas del logo (`HALT` parcheados) se
+  redibujan en el V9990 (`LOGO_*` en `src/rom/rom.asm`). Va sincronizado
+  con el TMS, algo más lento (7,65 s frente a 6,03 s).
+- Con GFX9000 el TMS enseña la pantalla de carga original: en MSX2 fija
+  (guardada en la VRAM alta del V9938), en MSX1 hasta que el juego pinta.
+
+## 9. f2c: opción 3, The Pepsi Challenge (2026-10-22)
+
+`src/juego/pepsi.asm`. La tecla 3 del menú alterna Mad Mix Game y The
+Pepsi Challenge (versión inglesa de Topo / US Gold): nivel inicial 2
+contado como 1 (`NIVEL_INICIAL`, `NIVEL_VUELTA`, `NUMEROS_NIVEL_BASE`) y
+la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
+
+- TMS: los sprites se cambian con un XOR en tramos (`PEPSI_DELTA`, $7700,
+  generado por `graficos.py`), después de enderezar los que el motor tiene
+  dados la vuelta en su sitio (bits 6-7 del indicador).
+- V9990: `V9_META_ELEGIR` elige `V9_META_PEPSI` (partes de 16×16 de la
+  mascota en amarillo y negro, misma rejilla de 24×24 que el TMS).
+- La carga de la ROM empieza en el banco 0 ($5800) para seguir en 256 KB.
+
+## 10. f2d: arreglos de Rubén a f2c (2026-10-22)
+
+- **Comecocos hacia la izquierda en el V9990.** Reflejado, el motor del
+  TMS lo dibuja además desplazado a la izquierda tantos píxeles como
+  columnas libres tiene a la derecha (bits 0-2 del indicador, 6 en el
+  comecocos). `original()` no lo tenía en cuenta y el sprite iba 6 píxeles
+  a la derecha: parecía no llegar al borde y comerse los cocos antes de
+  tiempo.
+- **Animación de The Pepsi Challenge.** Sus subtablas de dirección son
+  otras: hacia arriba anda (sprites 64 y 65, que Mad Mix no tiene; usa el
+  6 quieto) y con la bola de poder baja en otro orden (10, 11, 57, 11 en
+  lugar de 10, 57, 11, 57). El motor solo tiene 64 sprites, así que el 64
+  va en el 63 (el nulo, sin usar) y el 65 es el 64 reflejado con 5
+  columnas libres (iguales salvo un píxel): arriba = $3F, $06, $BF, $06.
+  Al alternar se aplican tres XOR (`PEPSI_XOR`): subtablas
+  (`PEPSI_SUBTABLAS`, ambos chips), indicadores y puntero del 63
+  (`PEPSI_INDICADORES`, en $DDA1, libre detrás del motor) y sprites
+  (`PEPSI_DELTA`). En el TMS el 63 apunta a `PEPSI_SPR63` ($7F60).
+- **Comecocos rojo hacia arriba (V9990).** El juego usa el sprite 6 hacia
+  arriba también con la bola de poder; con `MODO_ESPECIAL` = 1,
+  `V9_META_ELEGIR` da el dibujo rojo del grafista (`V9_META_ROJO_ARRIBA`).
+- **Cocos que no se ven.** El mapa del grafista del nivel 1 no trae tres
+  cocos junto a la salida del comecocos (y falta algún objeto suelto en los
+  niveles 6, 8, 11 y 15). Si una celda tiene suelo en el mapa pero su valor
+  casi siempre lleva objeto, se dibuja la loseta de ese valor sobre el
+  suelo más parecido.
+- Sin cambiar de juego, la partida en el TMS es idéntica a f1c (C-BIOS
+  MSX1 y MSX2); alternar dos veces deja la RAM como estaba.

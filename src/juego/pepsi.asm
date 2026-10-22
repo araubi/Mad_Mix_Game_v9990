@@ -9,16 +9,22 @@
 ;  cinta); tools/graficos.py genera:
 ;    build/pepsi_delta.bin  XOR entre los sprites de Mad Mix y los de
 ;                           Pepsi, en tramos (para el TMS)
-;    build/v9_pepsi.inc     las partes de la mascota para el V9990
+;    build/pepsi_subtablas.bin, pepsi_indicadores.bin
+;                           los otros XOR: animacion de The Pepsi
+;                           Challenge (sube andando; sprites 64/65 ->
+;                           63 y 63 reflejado) y huecos/puntero del 63
+;    build/v9_pepsi.inc     las partes de la mascota para el V9990 (y el
+;                           comecocos rojo hacia arriba)
 ;
 ;  Memoria:
 ;    $0F00-$0FFF  codigo y textos (con y sin GFX9000; la zona de
 ;                 mascaras de los actores, desde $0500, no llega aqui)
-;    $7700-$7FEF  PEPSI_DELTA: solo sin GFX9000 (con GFX9000 ahi van los
-;                 buferes del espejo y SOMBRA_MATRIZ)
+;    $7700-$7FEF  PEPSI_DELTA y PEPSI_SPR63 ($7F60): solo sin GFX9000 (con
+;                 GFX9000 ahi van los buferes del espejo y SOMBRA_MATRIZ)
 ;    $7FF0-$83AF  V9_META_ELEGIR y V9_META_PEPSI: solo con GFX9000 (sin
 ;                 GFX9000 ahi va TRASPUESTA, del volcado al TMS)
 ;    $83B0-$83FF  textos de la opcion 3
+;    $DDA1-$DE03  PEPSI_SUBTABLAS y PEPSI_INDICADORES (libre tras el motor)
 ; ==============================================================
 
     ORG $0F00
@@ -59,9 +65,9 @@ PEPSI_DESPACHAR:
     CALL PEPSI_DIBUJAR_MENU
     JP ESPERAR_TECLA_SOLTADA    ; una pulsacion, un cambio
 
-; Cambia de juego: nivel inicial, numero de fase, texto del menu y la
-; mascota (en el V9990 la elige V9_META_ELEGIR; en el TMS se aplica el
-; XOR a los sprites)
+; Cambia de juego: nivel inicial, numero de fase, texto del menu, la
+; animacion de la mascota (subtablas de direccion) y sus sprites (en el
+; V9990 los elige V9_META_ELEGIR; en el TMS se aplican los XOR)
 PEPSI_ALTERNAR:
     LD A, (MODO_PEPSI)
     XOR 1
@@ -80,6 +86,9 @@ PEPSI_ALTERNAR:
 .TABLAS:
     LD (NUMEROS_NIVEL_BASE + 1), HL
     LD (PEPSI_TEXTO_JUEGO), DE
+    LD HL, PEPSI_SUBTABLAS
+    LD DE, SUBTABLA_DIRECCION_A + 16
+    CALL PEPSI_XOR
     LD A, (V9_PRESENTE)
     AND A
     RET NZ
@@ -97,6 +106,8 @@ PEPSI_ALTERNAR:
     CP 57
     JR C, .SIGUIENTE
     CP 62
+    JR Z, .SIGUIENTE
+    CP 64
     JR NC, .XOR
 .DERECHO:
     LD L, C
@@ -122,16 +133,22 @@ PEPSI_ALTERNAR:
     INC C
     JR .SPRITE
 .XOR:
+    ; indicadores (hueco de las vistas de lado) y puntero del 63
+    LD HL, PEPSI_INDICADORES
+    LD DE, PTR_TABLA_SPRITES + 2
+    CALL PEPSI_XOR
     LD HL, PEPSI_DELTA
     LD DE, SPR00_PM_VULN_DER_CERRADA
-.TRAMO:
+; XOR en tramos (bytes iguales, bytes distintos, los distintos) desde DE
+; hasta un tramo (0, 0)
+PEPSI_XOR:
     LD C, (HL)                  ; bytes iguales
     INC HL
     LD B, (HL)                  ; bytes distintos
     INC HL
     LD A, C
     OR B
-    JR Z, .INDICADORES
+    RET Z
     LD A, C
     ADD A, E
     LD E, A
@@ -140,7 +157,7 @@ PEPSI_ALTERNAR:
     LD D, A
     LD A, B
     AND A
-    JR Z, .TRAMO
+    JR Z, PEPSI_XOR
 .BYTE:
     LD A, (DE)
     XOR (HL)
@@ -148,24 +165,7 @@ PEPSI_ALTERNAR:
     INC HL
     INC DE
     DJNZ .BYTE
-    JR .TRAMO
-.INDICADORES:
-    ; hueco de la derecha de las vistas de lado (0-2 y 7-9): 6 <-> 2
-    LD HL, PTR_TABLA_SPRITES + 2
-    CALL .TRES
-    LD HL, PTR_TABLA_SPRITES + 7 * 4 + 2
-.TRES:
-    LD B, 3
-.INDICADOR:
-    LD A, (HL)
-    XOR 4
-    LD (HL), A
-    INC HL
-    INC HL
-    INC HL
-    INC HL
-    DJNZ .INDICADOR
-    RET
+    JR PEPSI_XOR
 
 FIN_PEPSI:
     ASSERT FIN_PEPSI <= $1000
@@ -184,12 +184,32 @@ FIN_TEXTOS_PEPSI:
 PEPSI_DELTA:
     INCBIN "../../build/pepsi_delta.bin"
 FIN_PEPSI_DELTA:
-    ASSERT FIN_PEPSI_DELTA <= SOMBRA_MATRIZ + 928
+    ASSERT FIN_PEPSI_DELTA <= PEPSI_SPR63
+; el sprite 63 de The Pepsi Challenge (su 64: la mascota hacia arriba);
+; en el TMS, PTR_TABLA_SPRITES apunta aqui (PEPSI_INDICADORES)
+    ORG SOMBRA_MATRIZ + 928 - 144
+PEPSI_SPR63:
+    ASSERT PEPSI_SPR63 = $7F60  ; tools/graficos.py
+    INCBIN "data/pepsi/sprites_pepsi.bin", 17 * 144, 144
+FIN_PEPSI_SPR63:
 
 ; --------------------------------------------------------------
-;  V9_META_ELEGIR: desde V9_TIC_SPRITES, A = sprite*2 + espejo.
-;  Devuelve HL -> puntero a las partes del actor (V9_META o, con The
-;  Pepsi Challenge, V9_META_PEPSI para los sprites 0-11 y 57-61).
+;  Tras el motor ($DDA1-$DE03, libre): los otros dos XOR
+; --------------------------------------------------------------
+    ORG FIN_MOTOR
+PEPSI_SUBTABLAS:                ; desde SUBTABLA_DIRECCION_A + 16
+    INCBIN "../../build/pepsi_subtablas.bin"
+PEPSI_INDICADORES:              ; desde PTR_TABLA_SPRITES + 2
+    INCBIN "../../build/pepsi_indicadores.bin"
+FIN_PEPSI_TABLAS:
+    ASSERT FIN_PEPSI_TABLAS <= BUFFER_LOSETAS_TRABAJO
+
+; --------------------------------------------------------------
+;  V9_META_ELEGIR: desde V9_PREPARAR_SPRITES, A = sprite*2 + espejo.
+;  Devuelve HL -> puntero a las partes del actor: V9_META o, con The
+;  Pepsi Challenge, V9_META_PEPSI para los sprites 0-11, 57-61 y 63. Con
+;  Mad Mix, el 6 (hacia arriba) con la bola de poder (MODO_ESPECIAL 1,
+;  el que elige la subtabla de direccion B) es el rojo.
 ; --------------------------------------------------------------
     ORG SOMBRA_MATRIZ + 928
 V9_META_ELEGIR:
@@ -198,13 +218,31 @@ V9_META_ELEGIR:
     LD DE, V9_META
     LD A, (MODO_PEPSI)
     AND A
-    JR Z, .INDICE
+    JR NZ, .PEPSI_MODO
+    LD A, L
+    AND $FE
+    CP 6 * 2
+    JR NZ, .INDICE
+    LD A, (MODO_ESPECIAL)
+    AND $07
+    DEC A
+    JR NZ, .INDICE
+    LD HL, .ROJO
+    RET
+.ROJO:
+    DW V9_META_ROJO_ARRIBA
+.PEPSI_MODO:
     LD A, L
     CP 24
     JR C, .PEPSI                ; sprites 0-11
     SUB 57 * 2
     CP 10
-    JR NC, .INDICE              ; ni 0-11 ni 57-61
+    JR C, .MAS24                ; 57-61
+    SUB 12
+    CP 2
+    JR NC, .INDICE              ; ni 0-11, ni 57-61, ni 63
+    ADD A, 10                   ; 63 -> 34, 35
+.MAS24:
     ADD A, 24
 .PEPSI:
     LD L, A

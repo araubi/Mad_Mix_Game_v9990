@@ -193,6 +193,22 @@ def laberinto(mem):
         en_otras = Counter(t[i] for i in range(filas * 32) if m[i] != comodin)
         suelos = sorted(k for k, c in en_comodin.items() if c > en_otras[k]) \
             or [frecuentes[n].get(comodin)]
+        # celdas con bola (u otro objeto) que el mapa del grafista trae
+        # vacias (en el nivel 1, junto a la salida del comecocos): se
+        # dibujan con la loseta del mismo valor sobre el suelo mas parecido
+        con_valor = {}
+        for i in range(filas * 32):
+            if t[i] not in suelos:
+                con_valor.setdefault(m[i], set()).add(t[i])
+        arregladas = 0
+        t = list(t)
+        for i in range(filas * 32):
+            if m[i] != comodin and t[i] in suelos and frecuentes[n][m[i]] not in suelos \
+                    and m[i] in con_valor:
+                t[i] = min(sorted(con_valor[m[i]]), key=lambda x: distancia(x, t[i]))
+                arregladas += 1
+        if arregladas:
+            print(f"  nivel {n:2}: {arregladas} celdas sin su objeto en el mapa")
         bloque = bytearray(BLOQUE_NIVEL)
         for i in range(filas * 32):
             t0 = t[i]
@@ -377,6 +393,10 @@ SPRITES = {
     55: (c16(304, Y48), None), 56: (c16(320, Y48), None),
     58: (c16(160, Y48), None), 59: (c16(176, Y48), None), 60: (c16(192, Y48), None), 61: (c16(208, Y48), None),
     62: (c16(416, Y0), None),
+    # 64: no existe en el original; con el V9990 es el comecocos rojo
+    # hacia arriba (el juego usa el 6, amarillo, tambien con la bola de
+    # poder; lo cambia V9_META_ELEGIR)
+    64: (c16(304, Y0), None),
 }
 
 
@@ -387,8 +407,12 @@ def caja(puntos):
 
 
 def original(mem, i, espejo):
-    """Pixeles visibles del sprite original i (24x24) y su centro."""
+    """Pixeles visibles del sprite original i (24x24), donde los pone el
+    TMS. Reflejado, el motor lo dibuja ademas desplazado a la izquierda
+    tantos pixeles como columnas libres tenga a la derecha (bits 0-2 del
+    indicador, $843F en MOTOR_ACTORES)."""
     base = mem[0x91C3 + i * 4] | mem[0x91C4 + i * 4] << 8
+    hueco = mem[0x91C5 + i * 4] & 7
     d = mem[base:base + 144]
     pts = []
     for r in range(24):
@@ -397,7 +421,7 @@ def original(mem, i, espejo):
             mascara = (d[b] >> (7 - c % 8)) & 1
             tinta = (d[b + 3] >> (7 - c % 8)) & 1
             if tinta or not mascara:
-                pts.append((23 - c if espejo else c, r))
+                pts.append((23 - hueco - c if espejo else c, r))
     return pts
 
 
@@ -425,7 +449,7 @@ def sprites(mem):
         return vistos[ind]
 
     meta = {}
-    for i in range(64):
+    for i in range(65):
         for espejo in (0, 1):
             if i not in SPRITES:
                 meta[(i, espejo)] = []
@@ -441,7 +465,7 @@ def sprites(mem):
             if not pts:
                 meta[(i, espejo)] = []
                 continue
-            ox, oy = caja(original(mem, i, espejo))
+            ox, oy = caja(original(mem, 6 if i == 64 else i, espejo))
             rx, ry = caja(pts)
             dx, dy = round(ox - rx), round(oy - ry)
             partes = []
@@ -469,9 +493,23 @@ def sprites(mem):
 #  The Pepsi Challenge (opcion 3 del menu): la mascota en lugar del
 #  comecocos. Sprites de la cinta inglesa (Topo / US Gold, 1988).
 # ----------------------------------------------------------------------
-PEPSI_IDS = list(range(12)) + list(range(57, 62))
-PEPSI_FLAGS = {0: 2, 1: 2, 2: 2, 7: 2, 8: 2, 9: 2}   # el resto, como en Mad Mix
+# The Pepsi Challenge tiene 66 sprites: el 64 y el 65 son la mascota
+# andando hacia arriba (Mad Mix usa el 6 quieto). Aqui no caben: el 64 va
+# en el 63 (el nulo, sin usar) y el 65 es el 64 reflejado con 5 columnas
+# libres a la derecha (identicos salvo un pixel).
+PEPSI_IDS = list(range(12)) + list(range(57, 62)) + [63]
+PEPSI_FLAGS = {0: 2, 1: 2, 2: 2, 7: 2, 8: 2, 9: 2, 63: 5}   # el resto, como en Mad Mix
 SPR_BASE = 0x953B                                      # sprite 0 (PTR_TABLA_SPRITES)
+PTR_SPRITES = 0x91C3                                   # PTR_TABLA_SPRITES
+PEPSI_SPR63 = 0x7F60                                   # pepsi.asm: el 63 de Pepsi (solo TMS)
+SUBTABLAS = 0x2C50                                     # SUBTABLA_DIRECCION_A
+# SUBTABLA_DIRECCION_A+16 .. SUBTABLA_DIRECCION_B+19 (arriba de A; abajo
+# y arriba de B): Mad Mix y The Pepsi Challenge (sus $40/$41 son aqui
+# $3F/$BF)
+TABLAS_MAD_MIX = bytes([6, 6, 6, 6] + [0xFE] * 4 + [7, 8, 9, 8, 0x87, 0x88, 0x89, 0x88]
+                       + [0x0A, 0x39, 0x0B, 0x39, 6, 6, 6, 6])
+TABLAS_PEPSI = bytes([0x3F, 6, 0xBF, 6] + [0xFE] * 4 + [7, 8, 9, 8, 0x87, 0x88, 0x89, 0x88]
+                     + [0x0A, 0x0B, 0x39, 0x0B, 0x3F, 6, 0xBF, 6])
 
 
 def datos_pepsi():
@@ -527,7 +565,29 @@ def delta_pepsi(mem):
     a = bytes(mem[SPR_BASE:SPR_BASE + 62 * 144])
     b = bytearray(a)
     for i, d in pep.items():
-        b[i * 144:(i + 1) * 144] = d
+        if i < 62:
+            b[i * 144:(i + 1) * 144] = d
+    return tramos(a, b)
+
+
+def delta_pepsi_tablas(mem):
+    """Los otros dos XOR, en el mismo formato: las subtablas de direccion
+    (desde SUBTABLA_DIRECCION_A+16) y los indicadores de
+    PTR_TABLA_SPRITES (desde el del sprite 0) con el puntero del 63."""
+    a = bytes(mem[SUBTABLAS + 16:SUBTABLAS + 40])
+    if a != TABLAS_MAD_MIX:
+        sys.exit("ERROR: las subtablas de direccion no son las esperadas")
+    sub = tramos(a, TABLAS_PEPSI)
+    a = bytes(mem[PTR_SPRITES + 2:PTR_SPRITES + 255])
+    b = bytearray(a)
+    for i, f in PEPSI_FLAGS.items():
+        b[i * 4] = (b[i * 4] & ~7) | f
+    b[63 * 4 - 2] = PEPSI_SPR63 & 0xFF
+    b[63 * 4 - 1] = PEPSI_SPR63 >> 8
+    return sub, tramos(a, b)
+
+
+def tramos(a, b):
     x = bytes(p ^ q for p, q in zip(a, b))
     out = bytearray()
     k = 0
@@ -603,7 +663,8 @@ def main():
     db("V9_PALETA_PORTADA", pal_portada)
     db("V9_PALETA_SPRITES", b"".join(c5(c) for c in pal_spr))
     # tabla de sprites: 128 punteros (sprite*2 + espejo) a listas de
-    # partes: n, y n veces (dx, dy, patron)
+    # partes: n, y n veces (dx, dy, patron); el 64 (rojo hacia arriba) va
+    # en v9_pepsi.inc, que no cabe aqui
     L.append("V9_META:")
     for i in range(64):
         for e in (0, 1):
@@ -623,8 +684,11 @@ def main():
 
     # Pepsi: XOR de los sprites para el TMS y partes para el V9990
     open(os.path.join(BUILD, "pepsi_delta.bin"), "wb").write(delta_pepsi(mem))
+    sub, ind = delta_pepsi_tablas(mem)
+    open(os.path.join(BUILD, "pepsi_subtablas.bin"), "wb").write(sub)
+    open(os.path.join(BUILD, "pepsi_indicadores.bin"), "wb").write(ind)
     L = ["; generado por tools/graficos.py -- no editar", "",
-         "; punteros (sprite*2 + espejo) de los sprites 0-11 y luego 57-61"]
+         "; punteros (sprite*2 + espejo) de los sprites 0-11, 57-61 y 63"]
     L.append("V9_META_PEPSI:")
     for i in PEPSI_IDS:
         for e in (0, 1):
@@ -634,6 +698,9 @@ def main():
             partes = meta_pepsi[(i, e)]
             L.append(f"V9_META_PEPSI_{i}_{e}:")
             L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))
+    partes = meta[(64, 0)]
+    L.append("V9_META_ROJO_ARRIBA:")
+    L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))
     open(os.path.join(BUILD, "v9_pepsi.inc"), "w").write("\n".join(L) + "\n")
     print(f"graficos: {n_losetas} losetas, {n_patrones} patrones de sprite,"
           f" capa A {len(capa)} bytes, niveles {len(niveles_bin)} bytes")
