@@ -38,7 +38,7 @@
 ;    ESPERAR_TIC usa V9_TRASPONER y V9_HAZ_PASADO
 ;
 ;  Puertos del V9990: $60 VRAM, $61 paleta, $63 dato de registro,
-;  $64 seleccion de registro, $66 indicadores de interrupcion,
+;  $64 seleccion de registro, $65 estado, $66 indicadores de interrupcion,
 ;  $67 control del sistema.
 ; ==============================================================
 
@@ -46,6 +46,7 @@ V9_VRAM     EQU $60
 V9_PALETA   EQU $61
 V9_REG_DATO EQU $63
 V9_REG_SEL  EQU $64
+V9_ESTADO   EQU $65
 V9_INT_FLAG EQU $66
 V9_SISTEMA  EQU $67
 

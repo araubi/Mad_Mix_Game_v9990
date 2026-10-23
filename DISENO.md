@@ -367,3 +367,15 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   frecuencia, que cuenta vueltas de un bucle.
 - Sin GFX9000 la partida es idéntica a f1c (C-BIOS MSX1 y MSX2). Sin BIOS de
   turbo R aquí, el R800 está sin probar.
+
+## 14. f2k (2026-10-23): bote antes de READY?
+
+- **El laberinto daba un bote al poner READY? (GFX9000; Rubén, Canon V-20).**
+  Si la interrupción del V9990 se atiende tarde (con la imagen ya empezada),
+  escribir el scroll de la capa B recoloca las líneas que faltan aunque el
+  valor sea el mismo: ese frame la ventana salía 7 px más arriba. Pasaba al
+  dibujar READY? (en openMSX también se ve, un frame). `V9_FIN_PANTALLA` mira
+  el bit VR del estado ($65) y, si ya no está fuera de la imagen, deja el
+  scroll para el frame siguiente (los sprites se suben igual).
+- En partida (openMSX) no se salta ninguna escritura: 719 de 719 frames.
+  Sin GFX9000, idéntica a f1c (C-BIOS MSX1 y MSX2).

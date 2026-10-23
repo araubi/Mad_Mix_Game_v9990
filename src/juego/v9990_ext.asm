@@ -240,9 +240,12 @@ V9_PONER_MODO:
     CALL V9_OCULTAR_SPRITES
     XOR A
     LD (V9_N_ACTORES), A
-    LD (V9_OVERLAY), A
-    LD (V9_OVERLAY + 1), A
-    LD (V9_OVERLAY + 2), A
+    LD HL, V9_OVERLAY
+    LD (HL), A
+    INC HL
+    LD (HL), A
+    INC HL
+    LD (HL), A
     LD A, (V9_MODO)
     CP MODO_JUEGO
     JR Z, .JUEGO
@@ -355,11 +358,18 @@ V9_OCULTAR_SPRITES:
 ; Desde V9_ISR, con el fin de pantalla del V9990: scroll de la capa B
 ; y, si hay, la tabla de sprites nueva. Usa AF, BC y HL.
 V9_FIN_PANTALLA:
+    ; con la imagen ya empezada no se toca el scroll: el V9990 recoloca
+    ; las lineas que quedan aunque el valor sea el mismo y la ventana da
+    ; un bote (f2k; pasaba al poner READY?, con la interrupcion tarde)
+    IN A, (V9_ESTADO)
+    AND $40                     ; VR: fuera de la imagen
+    JR Z, .SPRITES
     LD A, 21
     OUT (V9_REG_SEL), A
     LD HL, V9_SCROLL
     LD BC, 4 * 256 + V9_REG_DATO
     OTIR
+.SPRITES:
     LD A, (V9_SPR_LISTOS)
     AND A
     RET Z
