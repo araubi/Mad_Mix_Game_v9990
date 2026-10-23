@@ -841,7 +841,7 @@ DIBUJAR_CAMBIO_LOSETA_REDRAW:
 ;       comparten este manejador los tipos 8 y 9 (ver mas abajo).
 ;   1 = suelo_con_bola_1/2/3 (bolita normal)      -> HNDLR_BOLITA_NORMAL
 ;   2 = suelo_con_bola_clavada_1/2/3 (bola fija)  -> HNDLR_BOLITA_CLAVADA
-;   3-6 = flecha_arriba/abajo/izquierda/derecha   -> HNDLR_AUTOCOCO_ARRIBA/2F50/2F88/2FC0
+;   3-6 = flecha_arriba/abajo/izquierda/derecha   -> HNDLR_AUTOCOCO_ARRIBA/ABAJO/IZQUIERDA/DERECHA
 ;   7 = pista_tanque_vertical                     -> HNDLR_PISTA_COCOTANQUE
 ;   8,9 = linea_electrica_puerta_fantasmas_a/b    -> HNDLR_SUELO_NORMAL (generico, sin logica propia)
 ;   10 = pista_avion_recto/remate_izq/remate_der  -> HNDLR_PISTA_COCONAVE
@@ -951,55 +951,52 @@ HNDLR_BOLITA_CLAVADA_EXIT:
 HNDLR_AUTOCOCO_ARRIBA:
     PUSH AF
     CP $02                  ; modo especial actual >= 2 -> no actua (igual que la bolita normal)
-    JR NC, HNDLR_AUTOCOCO_ARRIBA_EXIT
+    JR NC, HNDLR_AUTOCOCO_EXIT
     LD A, D
     OR E
     AND $03
     CP $02                    ; fase de movimiento correcta
-    JR NZ, HNDLR_AUTOCOCO_ARRIBA_EXIT
-    BIT 2, B                    ; bit2 de B = dirección "arriba" ya bloqueada?
+    JR NZ, HNDLR_AUTOCOCO_EXIT
     LD A, B
+    BIT 2, B                    ; bit2 de B = direccion "arriba" ya bloqueada?
     LD B, $00
-    JR NZ, HNDLR_AUTOCOCO_ARRIBA_EXIT                ; bloqueada -> no fuerza nada
+    JR NZ, HNDLR_AUTOCOCO_EXIT                ; bloqueada -> no fuerza nada
     LD B, A
-    LD A, $02
-    LD (EVENTO_SONIDO_PENDIENTE), A
-    LD A, (REGISTRO_NIVEL_LOSETA_COMODIN)
-    CALL DIBUJAR_CAMBIO_LOSETA
-    LD A, $08
-    LD (DIRECCION_FORZADA), A
-    PUSH HL
-    LD HL, $0002
-    CALL DIBUJAR_MARCADOR_PUNTOS
-    LD HL, (CONTADOR_BOLAS_COMIDAS)
-    INC HL
-    LD (CONTADOR_BOLAS_COMIDAS), HL
-    POP HL
-HNDLR_AUTOCOCO_ARRIBA_EXIT:
-    POP AF
-    JP TICK_MODO_ESPECIAL
+    LD A, $08                  ; flag de direccion forzada
+    JR HNDLR_AUTOCOCO_COMUN
 
-; --- (tipo 4, flecha_abajo -- ver comentario de HNDLR_AUTOCOCO_ARRIBA) ---
 HNDLR_AUTOCOCO_ABAJO:
     PUSH AF
-    CP $02
-    JR NC, HNDLR_AUTOCOCO_ABAJO_EXIT
+    CP $02                  ; modo especial actual >= 2 -> no actua (igual que la bolita normal)
+    JR NC, HNDLR_AUTOCOCO_EXIT
     LD A, D
     OR E
     AND $03
-    CP $02
-    JR NZ, HNDLR_AUTOCOCO_ABAJO_EXIT
-    BIT 3, B                    ; bit3 de B = direccion "abajo" ya bloqueada?
+    CP $02                    ; fase de movimiento correcta
+    JR NZ, HNDLR_AUTOCOCO_EXIT
     LD A, B
+    BIT 3, B                    ; bit3 de B = direccion "abajo" ya bloqueada?
     LD B, $00
-    JR NZ, HNDLR_AUTOCOCO_ABAJO_EXIT
+    JR NZ, HNDLR_AUTOCOCO_EXIT                ; bloqueada -> no fuerza nada
     LD B, A
+    LD A, $04                  ; flag de direccion forzada
+    JR HNDLR_AUTOCOCO_COMUN
+
+; --- Cola comun de las 4 flechas (PROYECTO: antes cada una llevaba la
+; suya). Ademas de lo que hacia el original, deja la cache de tipo de
+; CONSULTAR_PROXIMA_LOSETA_EN_ESTA_DIRECCION en 15 (suelo_sin_bola), como
+; hace HNDLR_BOLITA_NORMAL: sin eso, si el comecocos se queda parado en
+; la flecha (empujando contra una pared), el tic siguiente vuelve a leer
+; la flecha de la cache y la cuenta otra vez, y el nivel se acaba con
+; una bolita sin comer (bug del juego original; Ruben, fase 2). ---
+HNDLR_AUTOCOCO_COMUN:
+    LD (DIRECCION_FORZADA), A
     LD A, $02
     LD (EVENTO_SONIDO_PENDIENTE), A
     LD A, (REGISTRO_NIVEL_LOSETA_COMODIN)
     CALL DIBUJAR_CAMBIO_LOSETA
-    LD A, $04
-    LD (DIRECCION_FORZADA), A
+    LD A, 15
+    LD (CACHE_TIPO_LOSETA), A
     PUSH HL
     LD HL, $0002
     CALL DIBUJAR_MARCADOR_PUNTOS
@@ -1007,73 +1004,46 @@ HNDLR_AUTOCOCO_ABAJO:
     INC HL
     LD (CONTADOR_BOLAS_COMIDAS), HL
     POP HL
-HNDLR_AUTOCOCO_ABAJO_EXIT:
+HNDLR_AUTOCOCO_EXIT:
     POP AF
     JP TICK_MODO_ESPECIAL
 
-; --- (tipo 5, flecha_izquierda -- ver comentario de HNDLR_AUTOCOCO_ARRIBA) ---
+; --- (tipo 5, flecha_izquierda) ---
 HNDLR_AUTOCOCO_IZQUIERDA:
     PUSH AF
-    CP $02
-    JR NC, HNDLR_AUTOCOCO_IZQUIERDA_EXIT
+    CP $02                  ; modo especial actual >= 2 -> no actua (igual que la bolita normal)
+    JR NC, HNDLR_AUTOCOCO_EXIT
     LD A, D
     OR E
     AND $03
-    CP $02
-    JR NZ, HNDLR_AUTOCOCO_IZQUIERDA_EXIT
+    CP $02                    ; fase de movimiento correcta
+    JR NZ, HNDLR_AUTOCOCO_EXIT
     LD A, B
     BIT 0, B                    ; bit0 de B = direccion "izquierda" ya bloqueada?
     LD B, $00
-    JR NZ, HNDLR_AUTOCOCO_IZQUIERDA_EXIT
+    JR NZ, HNDLR_AUTOCOCO_EXIT                ; bloqueada -> no fuerza nada
     LD B, A
-    LD A, $02
-    LD (EVENTO_SONIDO_PENDIENTE), A
-    LD A, (REGISTRO_NIVEL_LOSETA_COMODIN)
-    CALL DIBUJAR_CAMBIO_LOSETA
-    LD A, $02
-    LD (DIRECCION_FORZADA), A
-    PUSH HL
-    LD HL, $0002
-    CALL DIBUJAR_MARCADOR_PUNTOS
-    LD HL, (CONTADOR_BOLAS_COMIDAS)
-    INC HL
-    LD (CONTADOR_BOLAS_COMIDAS), HL
-    POP HL
-HNDLR_AUTOCOCO_IZQUIERDA_EXIT:
-    POP AF
-    JP TICK_MODO_ESPECIAL
+    LD A, $02                  ; flag de direccion forzada
+    JR HNDLR_AUTOCOCO_COMUN
 
-; --- (tipo 6, flecha_derecha -- ver comentario de HNDLR_AUTOCOCO_ARRIBA) ---
+; --- (tipo 6, flecha_derecha) ---
 HNDLR_AUTOCOCO_DERECHA:
     PUSH AF
-    CP $02
-    JR NC, HNDLR_AUTOCOCO_DERECHA_EXIT
+    CP $02                  ; modo especial actual >= 2 -> no actua (igual que la bolita normal)
+    JR NC, HNDLR_AUTOCOCO_EXIT
     LD A, D
     OR E
     AND $03
-    CP $02
-    JR NZ, HNDLR_AUTOCOCO_DERECHA_EXIT
+    CP $02                    ; fase de movimiento correcta
+    JR NZ, HNDLR_AUTOCOCO_EXIT
     LD A, B
     BIT 1, B                    ; bit1 de B = direccion "derecha" ya bloqueada?
     LD B, $00
-    JR NZ, HNDLR_AUTOCOCO_DERECHA_EXIT
+    JR NZ, HNDLR_AUTOCOCO_EXIT                ; bloqueada -> no fuerza nada
     LD B, A
-    LD A, $02
-    LD (EVENTO_SONIDO_PENDIENTE), A
-    LD A, (REGISTRO_NIVEL_LOSETA_COMODIN)
-    CALL DIBUJAR_CAMBIO_LOSETA
-    LD A, $01
-    LD (DIRECCION_FORZADA), A
-    PUSH HL
-    LD HL, $0002
-    CALL DIBUJAR_MARCADOR_PUNTOS
-    LD HL, (CONTADOR_BOLAS_COMIDAS)
-    INC HL
-    LD (CONTADOR_BOLAS_COMIDAS), HL
-    POP HL
-HNDLR_AUTOCOCO_DERECHA_EXIT:
-    POP AF
-    JP TICK_MODO_ESPECIAL
+    LD A, $01                  ; flag de direccion forzada
+    JR HNDLR_AUTOCOCO_COMUN
+    DS HNDLR_AUTOCOCO_ARRIBA + 224 - $   ; mismo tamano que las 4 del original: lo que sigue no se mueve
 
 ; --- HNDLR_PISTA_COCOTANQUE (tipo 7, pista_tanque_vertical -- CORREGIDO: el
 ; comentario antiguo decia "tipo trampilla", pero el cruce con

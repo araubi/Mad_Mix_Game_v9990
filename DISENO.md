@@ -409,3 +409,27 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   Rubén confirme que se enciende el piloto.
 - Sin GFX9000 la partida es idéntica a f2k (C-BIOS MSX1 y MSX2), y con
   GFX9000 la salida del TMS también.
+
+## 16. f2m (2026-10-23): flecha contada dos veces y bote tras el logo
+
+- **Fase 2 acabada con una bolita sin comer (Rubén, replay en Canon V-20).**
+  Fallo del juego original: el tipo de la loseta que pisa el comecocos se
+  guarda en una cache (CACHE_TIPO_LOSETA, por columna). HNDLR_BOLITA_NORMAL
+  la pone a 15 al comerse la bolita, pero las 4 flechas no: si el comecocos
+  se queda quieto sobre una flecha (empujando contra una pared), el tic
+  siguiente la vuelve a leer de la cache y la cuenta otra vez. En el replay
+  pasaba en la fase 2 a los 200 s (flecha izquierda, misma posición dos
+  tics), y la cuenta llegaba al objetivo con una bolita en el mapa. Las 4
+  flechas comparten ahora una cola (HNDLR_AUTOCOCO_COMUN) que deja la
+  cache a 15; el bloque ocupa lo mismo que antes (DS de relleno), así que
+  no se mueve nada más. Con el arreglo, bolitas que quedan + comidas = 147
+  durante todo el replay. También está en la rama msx1 (f0e).
+- **Bote al acabar el logo de Topo con GFX9000.** V9_SUBIR volvía a buscar
+  el V9990 escribiendo el R#15 (color de fondo) con el logo aún en
+  pantalla, y lo reiniciaba (puerto $67) en mitad de la imagen: lo que
+  quedaba del frame salía de otro color y desplazado. Ahora se fía de
+  LOGO_EN_V9990 (LOGO_GANCHO_QUITAR ya no lo borra) y apaga la pantalla y
+  reinicia justo al empezar el borde (VR de 0 a 1). Visto frame a frame a
+  50 y 60 Hz: el logo pasa a negro limpio.
+- Sin GFX9000 la partida es idéntica a f2l (C-BIOS MSX1 y MSX2), y con
+  GFX9000 la salida del TMS también.

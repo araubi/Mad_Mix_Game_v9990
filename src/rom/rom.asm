@@ -803,9 +803,7 @@ LOGO_GANCHO_QUITAR:
     LD ($E001), HL
     LD HL, $0059
     LD ($E004), HL
-    XOR A
-    LD (LOGO_EN_V9990), A
-    RET
+    RET                         ; LOGO_EN_V9990 sigue a 1 para V9_SUBIR
 
 ; --------------------------------------------------------------
 ;  PONER_SLOT: conmuta la pagina B (0-2) al slot A (formato
@@ -1016,24 +1014,27 @@ ARRANCAR_JUEGO:
 ;  prepara V9_INICIAR al arrancar el juego.
 ; --------------------------------------------------------------
 V9_SUBIR:
-    LD A, 15
+    ; el V9990 ya lo busco V9_LOGO_PREPARAR: volver a probar el R#15 (el
+    ; color de fondo) con el logo en pantalla pintaba de blanco lo que
+    ; quedaba de imagen (f2m)
+    LD A, (LOGO_EN_V9990)
+    AND A
+    RET Z
+    ; el reinicio vuelve a empezar la imagen: con el logo aun en pantalla,
+    ; ese frame salia desplazado (un bote, f2m). Se apaga la pantalla y se
+    ; reinicia justo al acabar una imagen (VR, bit 6 del estado, de 0 a 1)
+.DENTRO:
+    IN A, ($65)
+    AND $40
+    JR NZ, .DENTRO
+.FUERA:
+    IN A, ($65)
+    AND $40
+    JR Z, .FUERA
+    LD A, 8
     OUT ($64), A
-    LD A, $2A
+    LD A, $02                   ; pantalla apagada
     OUT ($63), A
-    LD A, $4F                   ; R#15, lectura sin autoincremento
-    OUT ($64), A
-    IN A, ($63)
-    CP $2A
-    RET NZ
-    LD A, 15
-    OUT ($64), A
-    LD A, $15
-    OUT ($63), A
-    LD A, $4F
-    OUT ($64), A
-    IN A, ($63)
-    CP $15
-    RET NZ
     LD A, 2
     OUT ($67), A                ; reinicio
     XOR A
