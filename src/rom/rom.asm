@@ -451,9 +451,9 @@ V9_LOGO_PREPARAR:
 
 ; LOGO_COPIAS: copias de las tablas del TMS como si estuviera recien
 ; borrado (patrones 0, color $F0: el relleno con que empieza el logo,
-; asi no hay que redibujar nada al borrar; se ve igual, negro) y
-; ninguna celda por redibujar. Despues de la pantalla de carga, que
-; usa la misma RAM.
+; asi no hay que redibujar nada al borrar; se ve igual, negro) y la
+; tabla LOGO_DIR (direccion en el V9990 de cada celda). Despues de la
+; pantalla de carga, que usa la misma RAM.
 LOGO_COPIAS:
     LD A, (LOGO_EN_V9990)
     AND A
@@ -470,10 +470,27 @@ LOGO_COPIAS:
     LD BC, 4 * 256
     LD A, $F0
     CALL .RELLENAR
-    LD HL, LOGO_SUCIAS
-    LD BC, LOGO_FILAS + 256 - LOGO_SUCIAS
-    XOR A
-    CALL .RELLENAR
+    ; LOGO_DIR: byte bajo de la direccion del V9990 y linea / 2, por
+    ; el byte bajo de la del TMS
+    LD HL, LOGO_DIR
+.D:
+    LD A, L
+    RRCA
+    LD C, A
+    AND $7C                     ; columna*4
+    LD B, A
+    LD A, C
+    AND $80                     ; (linea and 1)*128
+    OR B
+    LD (HL), A
+    INC H
+    LD A, L
+    AND 6
+    RRCA
+    LD (HL), A
+    DEC H
+    INC L
+    JR NZ, .D
     ; LOGO_M: pixel a $F si su bit esta a 1
     LD HL, LOGO_M
 .M:
@@ -640,29 +657,27 @@ LOGO_EN_V9990: DB 0             ; 1: el logo se dibuja en el V9990
 ;  Logo de Topo en el V9990. LOGO_WRTVRM_V9 (WRTVRM del logo: A = byte,
 ;  HL = direccion del TMS; conserva todos los registros) no toca el
 ;  TMS: guarda el byte en una copia de las tablas de patrones y color
-;  en RAM y marca la celda. En las pausas del logo (LOGO_ESPERA)
-;  se redibujan las celdas marcadas en el espejo de la capa A del
-;  V9990 ($00000, patron fila*32 + columna).
+;  en RAM y, si ha cambiado, dibuja esa linea de la celda en el espejo
+;  de la capa A del V9990 ($00000, patron fila*32 + columna).
 ;
 ;  RAM libre durante el logo (el logo ocupa $9470-$A50D y usa
 ;  $C000-$D7FF como copia de los patrones, ver LOGO_LDIRMV_V9):
 ;    $A600-$BDFF  copia de los patrones del TMS
 ;    $8000-$93FF  copia del color, filas 0-19; $D800-$DBFF filas 20-23
-;    $E800-$EAFF  celdas por redibujar; $EB00-$EB17 filas con alguna
-;    $DC00-$DFFF y $EE00-$EFFF  tablas de LOGO_TRAMO (f2j)
+;    $DC00-$DFFF, $E800-$E9FF y $EE00-$EFFF  tablas de LOGO_WRTVRM_V9
 ;  (el BUFFER de COPIAR_FRAGMENTOS no se usa mientras corre el logo)
 ; --------------------------------------------------------------
 LOGO_PATRONES   EQU $A600
-LOGO_SUCIAS     EQU $E800
-LOGO_FILAS      EQU $EB00
+LOGO_DIR        EQU $E800       ; 2 paginas: byte bajo y linea / 2 (ver LOGO_COPIAS)
 LOGO_M          EQU $DC00       ; 4 paginas: byte k (2 pixeles) del patron p, $F/$0 por pixel
 LOGO_FONDO      EQU $EE00       ; color c del TMS: fondo * $11
 LOGO_DIF        EQU $EF00       ; color c: (tinta xor fondo) * $11
-LOGO_TRAMO_MAX  EQU 8           ; celdas como mucho por llamada a LOGO_TRAMO
 
 LOGO_WRTVRM_V9:
     PUSH HL
-    PUSH AF
+    EXX                         ; el logo no usa los registros alternativos
+    POP HL                      ; HL' = direccion del TMS
+    LD C, A
     LD A, H
     CP $18
     JR C, .PATRON
@@ -670,78 +685,90 @@ LOGO_WRTVRM_V9:
     JR C, .NADA                 ; nombres: identidad, como deja INIGRP
     CP 24
     JR NC, .NADA                ; sprites: no se usan
+    LD B, A                     ; fila
     CP 20
     JR C, .COLOR_BAJO
     ADD A, $D8 - $80 - 20
 .COLOR_BAJO:
-    ADD A, $80 - HIGH LOGO_PATRONES
-.PATRON:
+    ADD A, $80
+    LD H, A
+    LD A, (HL)
+    CP C
+    JR Z, .NADA
+    LD (HL), C
+    LD A, B
     ADD A, HIGH LOGO_PATRONES
     LD H, A
-    POP AF
-    PUSH AF                     ; como el BIOS, no toca los indicadores
-    CP (HL)
-    JR NZ, .CAMBIA
-.NADA:
-    POP AF
-    POP HL
-    RET
-.CAMBIA:
-    POP AF
-    LD (HL), A
-    POP HL
-    PUSH HL
-    PUSH AF
-    PUSH BC
-    ; marca LOGO_SUCIAS + fila*32 + columna y LOGO_FILAS + fila
-    LD A, L
-    RRCA
-    RRCA
-    RRCA
-    AND $1F
-    LD L, A                     ; columna
-    LD A, H
-    AND $1F                     ; fila (patrones $00-$17, color $20-$37)
-    LD C, A
-    RRCA
-    RRCA
-    RRCA
-    LD B, A                     ; (fila & 7) << 5 | fila >> 3
-    AND $E0
-    OR L
-    LD L, A
-    LD A, B
-    AND $07
-    ADD A, HIGH LOGO_SUCIAS
+    LD E, (HL)                  ; patron
+    LD A, C                     ; color
+    JR .DIBUJAR
+.PATRON:
+    LD B, A                     ; fila
+    ADD A, HIGH LOGO_PATRONES
     LD H, A
-    LD (HL), 1
-    LD H, HIGH LOGO_FILAS
-    LD L, C
-    LD (HL), 1
-    ; una vez por interrupcion, algo de redibujado aqui tambien: partes del
-    ; logo (la T, las O) se dibujan sin pausas y el V9990 se quedaba
-    ; parado hasta la siguiente (f2j)
-    LD A, (JIFFY)
-    LD HL, .VISTO
-    CP (HL)
-    JR Z, .SIN_PASO
-    LD (HL), A
-    PUSH DE
-    LD B, 2
-.PASO:
-    PUSH BC
-    CALL LOGO_VOLCAR_UNA
-    POP BC
-    JR Z, .LISTO
-    DJNZ .PASO
-.LISTO:
-    POP DE
-.SIN_PASO:
-    POP BC
-    POP AF
-    POP HL
+    LD A, (HL)
+    CP C
+    JR Z, .NADA
+    LD (HL), C
+    LD E, C                     ; patron
+    LD A, B
+    CP 20
+    JR C, .COLOR_ALTO
+    ADD A, $D8 - $80 - 20
+.COLOR_ALTO:
+    ADD A, $80
+    LD H, A
+    LD A, (HL)                  ; color
+    ; esa linea de la celda, ya al V9990 (f2l: antes se marcaba la celda y
+    ; se redibujaba en las pausas, pero el logo dibuja casi todo sin
+    ; pausas y el V9990 iba muy por detras). Direccion: fila*1024 +
+    ; linea*128 + columna*4; byte k = fondo xor (M[k][patron] and
+    ; (tinta xor fondo))
+.DIBUJAR:
+    LD D, A
+    XOR A
+    OUT ($64), A                ; R#0, con autoincremento
+    LD H, HIGH LOGO_DIR
+    LD A, (HL)
+    OUT ($63), A
+    INC H
+    LD A, B
+    ADD A, A
+    ADD A, A
+    OR (HL)
+    OUT ($63), A
+    XOR A
+    OUT ($63), A
+    LD L, D
+    LD H, HIGH LOGO_FONDO
+    LD D, (HL)
+    INC H
+    LD B, (HL)                  ; LOGO_DIF
+    LD L, E
+    LD H, HIGH LOGO_M
+    LD A, (HL)
+    AND B
+    XOR D
+    OUT ($60), A
+    INC H
+    LD A, (HL)
+    AND B
+    XOR D
+    OUT ($60), A
+    INC H
+    LD A, (HL)
+    AND B
+    XOR D
+    OUT ($60), A
+    INC H
+    LD A, (HL)
+    AND B
+    XOR D
+    OUT ($60), A
+.NADA:
+    LD A, C
+    EXX
     RET
-.VISTO: DB 0
 
 ; --------------------------------------------------------------
 ;  LOGO_LDIRMV_V9: LDIRMV del logo (HL = VRAM, DE = RAM, BC = bytes;
@@ -754,272 +781,8 @@ LOGO_LDIRMV_V9:
     LDIR
     RET
 
-; --------------------------------------------------------------
-;  Pausas del logo con GFX9000. LOGO_GANCHO_PONER cambia en la copia
-;  del logo en RAM sus 5 esperas (HALT) por llamadas a estas rutinas,
-;  que aprovechan el tiempo hasta la siguiente interrupcion para
-;  redibujar celdas marcadas y hacen HALT si no queda ninguna. Las que no
-;  da tiempo a redibujar se quedan para la pausa siguiente (si cambian
-;  antes, se dibujan ya cambiadas): el logo va al ritmo del TMS, saltando
-;  pasos si hace falta, y no se para a esperar al V9990 (f2j: en una
-;  maquina real se veia atascarse).
-; --------------------------------------------------------------
-; En lugar de "HALT / DJNZ $-1" (B = interrupciones que esperar)
-LOGO_ESPERA_B:
-    CALL LOGO_ESPERA
-    DJNZ LOGO_ESPERA_B
-    RET
 
-; En lugar de "EI / HALT / DI"
-LOGO_ESPERA_1:
-    EI
-    CALL LOGO_ESPERA
-    DI
-    RET
-
-; Como HALT (con interrupciones abiertas); conserva los registros
-LOGO_ESPERA:
-    PUSH AF
-    PUSH BC
-    PUSH DE
-    PUSH HL
-    LD A, (JIFFY)
-    LD (.JIFFY), A
-.BUCLE:
-    LD HL, JIFFY
-    LD A, (.JIFFY)
-    CP (HL)
-    JR NZ, .FIN                 ; ya ha llegado la interrupcion
-    CALL LOGO_VOLCAR_UNA
-    JR NZ, .BUCLE
-    LD HL, JIFFY
-    DI
-    LD A, (.JIFFY)
-    CP (HL)
-    JR NZ, .FIN_EI
-    EI                          ; EI + HALT: no se pierde la interrupcion
-    HALT
-    JR .FIN
-.FIN_EI:
-    EI
-.FIN:
-    POP HL
-    POP DE
-    POP BC
-    POP AF
-    RET
-.JIFFY: DB 0
-
-; Redibuja el primer tramo de celdas marcadas seguidas de una fila
-; (hasta LOGO_TRAMO_MAX) (NZ) o no hay ninguna marcada (Z)
-; Las filas se recorren por turnos desde la siguiente a la ultima
-; redibujada, para que ninguna se quede sin dibujar si las de arriba no
-; paran de cambiar.
-LOGO_VOLCAR_UNA:
-    LD A, (.OCUPADO)            ; el logo tambien escribe desde la
-    AND A                       ; interrupcion: sin anidar (Z)
-    JR Z, .LIBRE
-    XOR A
-    RET
-.LIBRE:
-    INC A
-    LD (.OCUPADO), A
-    CALL .UNA
-    LD HL, .OCUPADO             ; conserva los indicadores
-    LD (HL), 0
-    RET
-.OCUPADO: DB 0
-.UNA:
-    LD A, (.DESDE)
-    LD E, A
-    LD D, HIGH LOGO_FILAS
-    LD C, 24
-.FILA:
-    LD A, (DE)
-    AND A
-    JR NZ, .EN_FILA
-.SIGUIENTE_FILA:
-    INC E
-    LD A, E
-    CP 24
-    JR C, .MISMA_VUELTA
-    LD E, 0
-.MISMA_VUELTA:
-    DEC C
-    JR NZ, .FILA
-    XOR A
-    RET
-.DESDE: DB 0
-.EN_FILA:
-    LD H, 0
-    LD L, E
-    ADD HL, HL
-    ADD HL, HL
-    ADD HL, HL
-    ADD HL, HL
-    ADD HL, HL
-    LD A, H
-    ADD A, HIGH LOGO_SUCIAS
-    LD H, A                     ; HL -> marca de la columna 0
-    LD B, 32
-    XOR A
-.BUSCAR:
-    CP (HL)
-    JR NZ, .HALLADA
-    INC HL
-    DJNZ .BUSCAR
-    LD (DE), A                  ; fila terminada
-    JR .SIGUIENTE_FILA
-.HALLADA:
-    LD A, 32
-    SUB B
-    LD (LOGO_TRAMO.COL0), A
-    LD C, 0
-.TRAMO:
-    LD A, (HL)
-    AND A
-    JR Z, .FIN_TRAMO
-    LD (HL), 0
-    INC HL
-    INC C
-    LD A, C
-    CP LOGO_TRAMO_MAX
-    JR Z, .FIN_TRAMO
-    DJNZ .TRAMO
-.FIN_TRAMO:
-    LD A, E
-    INC A
-    CP 24
-    JR C, .TURNO
-    XOR A
-.TURNO:
-    LD (.DESDE), A
-    LD B, E                     ; fila; C = celdas
-    CALL LOGO_TRAMO
-    OR 1
-    RET
-
-; Fila B, celdas LOGO_TRAMO.COL0 .. +C-1 al espejo del V9990, linea a
-; linea (cada linea del tramo es seguida en la VRAM del V9990).
-; Cada byte de 2 pixeles sale de LOGO_M, LOGO_FONDO y LOGO_DIF (f2j:
-; antes rehacia unas tablas cada vez que cambiaba el color, casi en cada
-; linea del logo).
-LOGO_TRAMO:
-    LD A, (.COL0)
-    ADD A, C
-    ADD A, A
-    ADD A, A
-    ADD A, A
-    LD (.FIN), A                ; (columna final) * 8
-    LD A, B
-    ADD A, HIGH LOGO_PATRONES
-    LD (.PAG_PATRON), A
-    LD A, B
-    CP 20
-    JR C, .COLOR_BAJO
-    ADD A, $D8 - $80 - 20
-.COLOR_BAJO:
-    ADD A, $80
-    LD (.PAG_COLOR), A
-    LD A, B
-    ADD A, A
-    ADD A, A
-    LD (.MEDIO), A              ; fila*4
-    XOR A
-    LD (.K), A
-.LINEA:
-    ; direccion: fila*1024 + linea*128 + columna*4
-    XOR A
-    OUT ($64), A
-    LD A, (.K)
-    RRCA
-    AND $80
-    LD C, A
-    LD A, (.COL0)
-    ADD A, A
-    ADD A, A
-    OR C
-    OUT ($63), A
-    LD A, (.K)
-    SRL A
-    LD C, A
-    LD A, (.MEDIO)
-    ADD A, C
-    OUT ($63), A
-    XOR A
-    OUT ($63), A
-    ; punteros de la linea
-    LD A, (.PAG_PATRON)
-    LD D, A
-    LD A, (.PAG_COLOR)
-    LD B, A
-    LD A, (.K)
-    LD C, A
-    LD A, (.COL0)
-    ADD A, A
-    ADD A, A
-    ADD A, A
-    ADD A, C
-    LD E, A                     ; columna*8 + linea
-    LD A, (.FIN)
-    ADD A, C
-    LD (.FIN_LINEA + 1), A
-    LD A, B
-    LD (.PAG_COLOR_LINEA + 1), A
-.CELDA:
-    ; byte k del patron = fondo xor (M[k][patron] and (tinta xor fondo))
-.PAG_COLOR_LINEA:
-    LD B, 0
-    LD C, E
-    LD A, (BC)                  ; color
-    LD L, A
-    LD H, HIGH LOGO_FONDO
-    LD C, (HL)
-    INC H
-    LD B, (HL)                  ; LOGO_DIF
-    LD A, (DE)                  ; patron
-    LD L, A
-    LD H, HIGH LOGO_M
-    LD A, (HL)
-    AND B
-    XOR C
-    OUT ($60), A
-    INC H
-    LD A, (HL)
-    AND B
-    XOR C
-    OUT ($60), A
-    INC H
-    LD A, (HL)
-    AND B
-    XOR C
-    OUT ($60), A
-    INC H
-    LD A, (HL)
-    AND B
-    XOR C
-    OUT ($60), A
-    LD A, E
-    ADD A, 8
-    LD E, A
-.FIN_LINEA:
-    CP 0
-    JR NZ, .CELDA
-    LD A, (.K)
-    INC A
-    LD (.K), A
-    CP 8
-    JR C, .LINEA
-    RET
-.COL0:       DB 0
-.FIN:        DB 0
-.PAG_PATRON: DB 0
-.PAG_COLOR:  DB 0
-.MEDIO:      DB 0
-.K:          DB 0
-
-; Con GFX9000: el logo escribe y lee en las copias y espera con
-; LOGO_ESPERA_B / LOGO_ESPERA_1 (direcciones del logo en RAM, ver
+; Con GFX9000: el logo escribe y lee en las copias (ver
 ; logotopo_cm_body.asm). Sin GFX9000 no cambia nada.
 LOGO_GANCHO_PONER:
     LD A, (LOGO_EN_V9990)
@@ -1029,37 +792,13 @@ LOGO_GANCHO_PONER:
     LD ($E001), HL
     LD HL, LOGO_LDIRMV_V9
     LD ($E004), HL
-    LD HL, .ESPERAS
-.ESPERA:
-    LD E, (HL)
-    INC HL
-    LD D, (HL)
-    INC HL
-    LD A, D
-    OR E
-    RET Z
-    LD A, $CD                   ; CALL
-    LD (DE), A
-    INC DE
-    LDI
-    LDI
-    JR .ESPERA
-.ESPERAS:
-    DW $949F, LOGO_ESPERA_B     ; ANIMAR_PUNTO_LUZ_SOFT (3 frames)
-    DW $9527, LOGO_ESPERA_B     ; DIBUJAR_SOFT_ROTANDO (2)
-    DW $9560, LOGO_ESPERA_1     ; DIBUJAR_O1_TOPO (EI / HALT / DI)
-    DW $95C6, LOGO_ESPERA_B     ; (4)
-    DW $966F, LOGO_ESPERA_B     ; ANIMAR_COLOR_TOPO (4)
-    DW 0
+    RET
 
-; Acaba de redibujar el logo y deja de usar el V9990
+; Deja de usar el V9990
 LOGO_GANCHO_QUITAR:
     LD A, (LOGO_EN_V9990)
     AND A
     RET Z
-.VOLCAR:
-    CALL LOGO_VOLCAR_UNA
-    JR NZ, .VOLCAR
     LD HL, $004D
     LD ($E001), HL
     LD HL, $0059
@@ -1478,7 +1217,7 @@ V9_DESCOMPRIMIR:
     INCLUDE "../../build/tabla_carga.inc"
 
     DISPLAY "fin del cargador en RAM: ", /A, $
-    ASSERT $ <= LOGO_SUCIAS
+    ASSERT $ <= $E800             ; BUFFER
     ENT
 CARGADOR_FIN:
 

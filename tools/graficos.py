@@ -806,11 +806,14 @@ def main():
     for nombre in ("ROJO", "NARANJA"):
         L.append(f"; fantasma {nombre.lower()}: punteros de los sprites 27-32 (sprite*2 + espejo)")
         L.append(f"V9_META_F_{nombre}:")
+        # los 31 y 32 reflejados (blancos) no se leen (V9_META_ELEGIR)
         for i in range(27, 33):
             for e in (0, 1):
-                L.append(f"    DW V9_META_F_{nombre}_{i}_{e}")
+                L.append("    DW 0" if e and i in (31, 32) else f"    DW V9_META_F_{nombre}_{i}_{e}")
         for i in range(27, 33):
             for e in (0, 1):
+                if e and i in (31, 32):
+                    continue
                 partes = meta_color[(nombre, i, e)]
                 L.append(f"V9_META_F_{nombre}_{i}_{e}:")
                 L.append(f"    DB {len(partes)}" + "".join(f", {dx & 0xFF}, {dy & 0xFF}, {p}" for dx, dy, p in partes))

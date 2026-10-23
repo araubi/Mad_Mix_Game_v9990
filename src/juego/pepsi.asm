@@ -317,33 +317,43 @@ V9_META_ELEGIR:
 
 ; --------------------------------------------------------------
 ;  V9_INDICADORES_ACTOR: desde V9_ACTOR_EXT (A = indicadores, B = sprite,
-;  HL -> donde se guardan, IX = la entrada del fantasma en
-;  TABLA_ITEMS_PELMAZOIDE). Guarda los bits 5-7 y, en los fantasmas
-;  normales (27-32), su color en los bits 0-1: el numero de la entrada
-;  (de 7 bytes) and 3. Conserva BC, DE e IX.
+;  HL -> donde se guardan, tras el sprite, X e Y; IX = la entrada del
+;  fantasma en TABLA_ITEMS_PELMAZOIDE). Guarda los bits 5-7 y, en los
+;  fantasmas (27-36), su color en los bits 0-1: la posicion de la entrada
+;  (de 7 bytes) and 3, que da un color distinto a cada uno de 4 seguidos.
+;  Con el hipopotamo (MODO_ESPECIAL 2) los fantasmas no huyen, se dejan
+;  pisar: los vulnerables (33-36 y el 31/32 reflejado, V9_FANTASMAS_BLANCOS)
+;  pasan a los normales de su color en vez de salir azules (f2l).
+;  Conserva BC, DE e IX.
 ; --------------------------------------------------------------
 V9_INDICADORES_ACTOR:
     AND $E0
     LD (HL), A
     LD A, B
     SUB 27
-    CP 6
+    CP 10
     RET NC
-    PUSH BC
-    PUSH IX
-    POP BC
-    LD A, C
+    LD A, IXL
     SUB LOW TABLA_ITEMS_PELMAZOIDE
-    LD C, -1
-.DIVIDIR:
-    INC C
-    SUB 7
-    JR NC, .DIVIDIR
-    LD A, C
     AND $03
     OR (HL)
     LD (HL), A
-    POP BC
+    LD A, (MODO_ESPECIAL)
+    CP 2
+    RET NZ
+    LD A, B
+    SUB 33
+    JR C, .ARRIBA
+    ADD A, 27                   ; 33-36 -> 27-30
+    DEC HL
+    DEC HL
+    DEC HL
+    LD (HL), A
+    RET
+.ARRIBA:
+    CP 31 - 33                  ; 31 y 32: sin reflejar, hacia arriba
+    RET C
+    RES 7, (HL)
     RET
 
     INCLUDE "../../build/v9_pepsi.inc"

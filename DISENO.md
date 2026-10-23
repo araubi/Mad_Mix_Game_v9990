@@ -379,3 +379,33 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   scroll para el frame siguiente (los sprites se suben igual).
 - En partida (openMSX) no se salta ninguna escritura: 719 de 719 frames.
   Sin GFX9000, idéntica a f1c (C-BIOS MSX1 y MSX2).
+
+## 15. f2l (2026-10-23): logo directo y fantasmas con el hipopótamo
+
+- **Logo de Topo con GFX9000 (Rubén: «sigue yendo fatal»).** Hasta f2k el
+  logo apuntaba las celdas cambiadas y las volcaba al V9990 en las esperas;
+  en las fases largas con las interrupciones cortadas la imagen se quedaba
+  quieta y luego se redibujaba de golpe, de izquierda a derecha. Ahora
+  `LOGO_WRTVRM_V9` pinta en el V9990 la línea de la celda en cuanto el logo
+  escribe un byte de patrón o de color que cambia: dirección de la celda
+  en `LOGO_DIR` ($E800, 2 páginas, la arma `LOGO_COPIAS`) y 4 bytes por la
+  máscara del patrón (`LOGO_M`) y los colores (`LOGO_FONDO`). Fuera las
+  esperas parcheadas, `LOGO_VOLCAR_UNA` y el volcado al quitar los ganchos.
+  En openMSX el V9990 hace la misma animación que el TMS: 6,64 s de logo
+  frente a 5,77 s sin GFX9000 (f2k: 6,94 s con parones).
+- **Fantasmas azules al pisarlos con el hipopótamo.** Con el hipopótamo el
+  juego usa los sprites de fantasma vulnerable (33-36 y el 31/32 reflejado),
+  que en el remake son azules. `V9_INDICADORES_ACTOR` da color a los
+  fantasmas 27-36 y, con MODO_ESPECIAL 2, cambia los vulnerables por los
+  normales (33-36 → 27-30; al 31/32 le quita el reflejo), que salen rojo,
+  rosa, cian y naranja. Con la bola de poder siguen azules, como en Pac-Man.
+  El color sale ahora de la posición de la entrada (and 3, no su número):
+  sigue siendo uno distinto para cada fantasma. Para hacer sitio,
+  graficos.py ya no genera las copias de color de 31/32 reflejados, que no
+  se leían.
+- **R800.** El juego va a 10 tics por segundo fijos (espera la
+  interrupción), así que el R800 no lo acelera; solo ayuda en lo que va
+  justo de tiempo (logo, menús espejo). Sin BIOS de turbo R aquí, falta que
+  Rubén confirme que se enciende el piloto.
+- Sin GFX9000 la partida es idéntica a f2k (C-BIOS MSX1 y MSX2), y con
+  GFX9000 la salida del TMS también.
