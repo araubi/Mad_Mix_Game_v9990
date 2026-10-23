@@ -35,6 +35,7 @@ CHGCLR      EQU $0062
 INIGRP      EQU $0072
 CHPUT       EQU $00A2
 INITXT      EQU $006C
+CHGCPU      EQU $0180
 
 BANCO1_REG  EQU $6000           ; ASCII16: banco de la pagina 1
 CARGADOR_RAM EQU $E000
@@ -150,6 +151,16 @@ INICIO_ROM:
     ; --- 50 o 60 Hz: fija el ritmo del juego (5 o 6 frames por tic) ---
     CALL DETECTAR_FRECUENCIA
     LD (TIC_DETECTADO), A
+
+    ; --- turbo R: al R800 (modo ROM, con el piloto), despues de medir la
+    ; frecuencia, que cuenta vueltas de un bucle (f2j) ---
+    LD A, ($002D)               ; version del MSX: 3 = turbo R
+    CP 3
+    JR C, .SIN_R800
+    LD A, $81
+    CALL CHGCPU
+    DI
+.SIN_R800:
 
     ; --- con GFX9000: el TMS muestra la pantalla de carga y el logo va al V9990 ---
     CALL V9_LOGO_PREPARAR
@@ -460,8 +471,60 @@ LOGO_COPIAS:
     LD A, $F0
     CALL .RELLENAR
     LD HL, LOGO_SUCIAS
-    LD BC, LOGO_P - LOGO_SUCIAS   ; y LOGO_TH / LOGO_TL
+    LD BC, LOGO_FILAS + 256 - LOGO_SUCIAS
     XOR A
+    CALL .RELLENAR
+    ; LOGO_M: pixel a $F si su bit esta a 1
+    LD HL, LOGO_M
+.M:
+    LD C, L
+    LD B, 4
+    PUSH HL
+.M_BYTE:
+    XOR A
+    RL C
+    JR NC, $ + 4
+    OR $F0
+    RL C
+    JR NC, $ + 4
+    OR $0F
+    LD (HL), A
+    INC H
+    DJNZ .M_BYTE
+    POP HL
+    INC L
+    JR NZ, .M
+    ; LOGO_FONDO y LOGO_DIF
+    LD HL, LOGO_FONDO
+.C:
+    LD A, L
+    AND $0F
+    LD C, A
+    RLCA
+    RLCA
+    RLCA
+    RLCA
+    OR C
+    LD (HL), A
+    LD A, L
+    RRCA
+    RRCA
+    RRCA
+    RRCA
+    AND $0F
+    XOR C
+    LD B, A
+    RLCA
+    RLCA
+    RLCA
+    RLCA
+    OR B
+    INC H
+    LD (HL), A
+    DEC H
+    INC L
+    JR NZ, .C
+    RET
 .RELLENAR:
     LD (HL), A
     LD D, H
@@ -586,15 +649,15 @@ LOGO_EN_V9990: DB 0             ; 1: el logo se dibuja en el V9990
 ;    $A600-$BDFF  copia de los patrones del TMS
 ;    $8000-$93FF  copia del color, filas 0-19; $D800-$DBFF filas 20-23
 ;    $E800-$EAFF  celdas por redibujar; $EB00-$EB17 filas con alguna
-;    $EC00-$ED23  tablas de pixeles de LOGO_TRAMO
+;    $DC00-$DFFF y $EE00-$EFFF  tablas de LOGO_TRAMO (f2j)
 ;  (el BUFFER de COPIAR_FRAGMENTOS no se usa mientras corre el logo)
 ; --------------------------------------------------------------
 LOGO_PATRONES   EQU $A600
 LOGO_SUCIAS     EQU $E800
 LOGO_FILAS      EQU $EB00
-LOGO_TH         EQU $EC00       ; nibble alto n: 2 bytes en $EC00 + n*16
-LOGO_TL         EQU $ED00       ; nibble bajo n: 2 bytes en $ED00 + n*2
-LOGO_P          EQU $ED20       ; 4 pares de pixeles (00, 01, 10, 11)
+LOGO_M          EQU $DC00       ; 4 paginas: byte k (2 pixeles) del patron p, $F/$0 por pixel
+LOGO_FONDO      EQU $EE00       ; color c del TMS: fondo * $11
+LOGO_DIF        EQU $EF00       ; color c: (tinta xor fondo) * $11
 LOGO_TRAMO_MAX  EQU 8           ; celdas como mucho por llamada a LOGO_TRAMO
 
 LOGO_WRTVRM_V9:
@@ -655,10 +718,30 @@ LOGO_WRTVRM_V9:
     LD H, HIGH LOGO_FILAS
     LD L, C
     LD (HL), 1
+    ; una vez por interrupcion, algo de redibujado aqui tambien: partes del
+    ; logo (la T, las O) se dibujan sin pausas y el V9990 se quedaba
+    ; parado hasta la siguiente (f2j)
+    LD A, (JIFFY)
+    LD HL, .VISTO
+    CP (HL)
+    JR Z, .SIN_PASO
+    LD (HL), A
+    PUSH DE
+    LD B, 2
+.PASO:
+    PUSH BC
+    CALL LOGO_VOLCAR_UNA
+    POP BC
+    JR Z, .LISTO
+    DJNZ .PASO
+.LISTO:
+    POP DE
+.SIN_PASO:
     POP BC
     POP AF
     POP HL
     RET
+.VISTO: DB 0
 
 ; --------------------------------------------------------------
 ;  LOGO_LDIRMV_V9: LDIRMV del logo (HL = VRAM, DE = RAM, BC = bytes;
@@ -675,8 +758,11 @@ LOGO_LDIRMV_V9:
 ;  Pausas del logo con GFX9000. LOGO_GANCHO_PONER cambia en la copia
 ;  del logo en RAM sus 5 esperas (HALT) por llamadas a estas rutinas,
 ;  que aprovechan el tiempo hasta la siguiente interrupcion para
-;  redibujar celdas marcadas y solo hacen HALT cuando no queda ninguna:
-;  el logo va al mismo ritmo que en el TMS.
+;  redibujar celdas marcadas y hacen HALT si no queda ninguna. Las que no
+;  da tiempo a redibujar se quedan para la pausa siguiente (si cambian
+;  antes, se dibujan ya cambiadas): el logo va al ritmo del TMS, saltando
+;  pasos si hace falta, y no se para a esperar al V9990 (f2j: en una
+;  maquina real se veia atascarse).
 ; --------------------------------------------------------------
 ; En lugar de "HALT / DJNZ $-1" (B = interrupciones que esperar)
 LOGO_ESPERA_B:
@@ -700,6 +786,10 @@ LOGO_ESPERA:
     LD A, (JIFFY)
     LD (.JIFFY), A
 .BUCLE:
+    LD HL, JIFFY
+    LD A, (.JIFFY)
+    CP (HL)
+    JR NZ, .FIN                 ; ya ha llegado la interrupcion
     CALL LOGO_VOLCAR_UNA
     JR NZ, .BUCLE
     LD HL, JIFFY
@@ -722,8 +812,28 @@ LOGO_ESPERA:
 
 ; Redibuja el primer tramo de celdas marcadas seguidas de una fila
 ; (hasta LOGO_TRAMO_MAX) (NZ) o no hay ninguna marcada (Z)
+; Las filas se recorren por turnos desde la siguiente a la ultima
+; redibujada, para que ninguna se quede sin dibujar si las de arriba no
+; paran de cambiar.
 LOGO_VOLCAR_UNA:
-    LD DE, LOGO_FILAS
+    LD A, (.OCUPADO)            ; el logo tambien escribe desde la
+    AND A                       ; interrupcion: sin anidar (Z)
+    JR Z, .LIBRE
+    XOR A
+    RET
+.LIBRE:
+    INC A
+    LD (.OCUPADO), A
+    CALL .UNA
+    LD HL, .OCUPADO             ; conserva los indicadores
+    LD (HL), 0
+    RET
+.OCUPADO: DB 0
+.UNA:
+    LD A, (.DESDE)
+    LD E, A
+    LD D, HIGH LOGO_FILAS
+    LD C, 24
 .FILA:
     LD A, (DE)
     AND A
@@ -732,9 +842,14 @@ LOGO_VOLCAR_UNA:
     INC E
     LD A, E
     CP 24
-    JR C, .FILA
+    JR C, .MISMA_VUELTA
+    LD E, 0
+.MISMA_VUELTA:
+    DEC C
+    JR NZ, .FILA
     XOR A
     RET
+.DESDE: DB 0
 .EN_FILA:
     LD H, 0
     LD L, E
@@ -772,6 +887,13 @@ LOGO_VOLCAR_UNA:
     JR Z, .FIN_TRAMO
     DJNZ .TRAMO
 .FIN_TRAMO:
+    LD A, E
+    INC A
+    CP 24
+    JR C, .TURNO
+    XOR A
+.TURNO:
+    LD (.DESDE), A
     LD B, E                     ; fila; C = celdas
     CALL LOGO_TRAMO
     OR 1
@@ -779,8 +901,9 @@ LOGO_VOLCAR_UNA:
 
 ; Fila B, celdas LOGO_TRAMO.COL0 .. +C-1 al espejo del V9990, linea a
 ; linea (cada linea del tramo es seguida en la VRAM del V9990).
-; LOGO_TH / LOGO_TL guardan los 2 bytes de cada nibble alto / bajo del
-; patron para el color de .COLOR; solo se rehacen cuando cambia.
+; Cada byte de 2 pixeles sale de LOGO_M, LOGO_FONDO y LOGO_DIF (f2j:
+; antes rehacia unas tablas cada vez que cambiaba el color, casi en cada
+; linea del logo).
 LOGO_TRAMO:
     LD A, (.COL0)
     ADD A, C
@@ -841,32 +964,41 @@ LOGO_TRAMO:
     LD A, (.FIN)
     ADD A, C
     LD (.FIN_LINEA + 1), A
-    LD H, HIGH LOGO_TH
+    LD A, B
+    LD (.PAG_COLOR_LINEA + 1), A
 .CELDA:
+    ; byte k del patron = fondo xor (M[k][patron] and (tinta xor fondo))
+.PAG_COLOR_LINEA:
+    LD B, 0
     LD C, E
     LD A, (BC)                  ; color
-.COLOR:
-    CP 0
-    CALL NZ, LOGO_TABLAS
+    LD L, A
+    LD H, HIGH LOGO_FONDO
+    LD C, (HL)
+    INC H
+    LD B, (HL)                  ; LOGO_DIF
     LD A, (DE)                  ; patron
-    AND $F0
     LD L, A
+    LD H, HIGH LOGO_M
     LD A, (HL)
+    AND B
+    XOR C
     OUT ($60), A
-    INC L
-    LD A, (HL)
-    OUT ($60), A
-    LD A, (DE)
-    AND $0F
-    ADD A, A
-    LD L, A
     INC H
     LD A, (HL)
+    AND B
+    XOR C
     OUT ($60), A
-    INC L
+    INC H
     LD A, (HL)
+    AND B
+    XOR C
     OUT ($60), A
-    DEC H
+    INC H
+    LD A, (HL)
+    AND B
+    XOR C
+    OUT ($60), A
     LD A, E
     ADD A, 8
     LD E, A
@@ -885,81 +1017,6 @@ LOGO_TRAMO:
 .PAG_COLOR:  DB 0
 .MEDIO:      DB 0
 .K:          DB 0
-
-; A = color del TMS (tinta alta, fondo bajo): rehace LOGO_TH y LOGO_TL
-; (con las tablas a ceros, .COLOR empieza en el color 0). Conserva BC,
-; DE y HL.
-LOGO_TABLAS:
-    LD (LOGO_TRAMO.COLOR + 1), A
-    PUSH BC
-    PUSH DE
-    PUSH HL
-    LD B, A
-    AND $0F
-    LD C, A                     ; fondo
-    LD A, B
-    AND $F0
-    LD B, A                     ; tinta << 4
-    RRCA
-    RRCA
-    RRCA
-    RRCA
-    LD E, A                     ; tinta
-    LD A, C
-    RLCA
-    RLCA
-    RLCA
-    RLCA
-    LD D, A                     ; fondo << 4
-    LD HL, LOGO_P
-    OR C
-    LD (HL), A                  ; 00: fondo, fondo
-    INC L
-    LD A, D
-    OR E
-    LD (HL), A                  ; 01: fondo, tinta
-    INC L
-    LD A, B
-    OR C
-    LD (HL), A                  ; 10: tinta, fondo
-    INC L
-    LD A, B
-    OR E
-    LD (HL), A                  ; 11: tinta, tinta
-    LD DE, LOGO_TH
-    LD BC, LOGO_TL
-.NIBBLE:
-    LD A, C                     ; 2n
-    RRCA
-    RRCA
-    RRCA
-    AND 3                       ; n >> 2
-    ADD A, LOW LOGO_P
-    LD L, A
-    LD A, (HL)
-    LD (DE), A
-    LD (BC), A
-    INC E
-    INC C
-    LD A, C                     ; 2n + 1
-    RRCA
-    AND 3                       ; n & 3
-    ADD A, LOW LOGO_P
-    LD L, A
-    LD A, (HL)
-    LD (DE), A
-    LD (BC), A
-    INC C
-    LD A, E
-    ADD A, 15
-    LD E, A
-    LD A, C
-    CP 32
-    JR C, .NIBBLE
-    POP HL
-    POP DE
-    POP BC
-    RET
 
 ; Con GFX9000: el logo escribe y lee en las copias y espera con
 ; LOGO_ESPERA_B / LOGO_ESPERA_1 (direcciones del logo en RAM, ver

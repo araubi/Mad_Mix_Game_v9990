@@ -1133,7 +1133,7 @@ V9_NOMBRE_A_2X2:
 ;
 ;  V9_LEER_FILA: copia la fila de caracteres A del TMS a
 ;  V9_BUF_PATRONES / V9_BUF_COLORES y devuelve en HL una suma de
-;  comprobacion (Fletcher de 8 bits) para saber si ha cambiado.
+;  comprobacion (tipo Fletcher de 8 bits) para saber si ha cambiado.
 ; --------------------------------------------------------------
 V9_LEER_FILA:
     PUSH AF
@@ -1168,7 +1168,9 @@ V9_LEER_FILA:
     INC DE
     ADD A, L
     LD L, A
-    ADD A, H
+    LD A, H
+    RLCA                        ; f2j: sin girar, cambiar el color de 8*k
+    ADD A, L                    ; bytes en $60 (2 JOYSTICK) no se notaba
     LD H, A
     DJNZ .BYTE
     EI

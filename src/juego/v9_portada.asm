@@ -386,6 +386,19 @@ V9_PARPADEO:
 V9_AMARILLO:      DB 0
 V9_HIPO_AMARILLO: DB 0
 
+; En lugar de CALL OBTENER_COLOR_VDP al poner READY?: con el V9990 el
+; recuadro va con fondo negro (sobre el laberinto, el color de la
+; camara se veia rosa) (f2j). Sin V9990 no cambia.
+V9_COLOR_READY:
+    CALL OBTENER_COLOR_VDP
+    LD HL, V9_PRESENTE
+    INC (HL)
+    DEC (HL)
+    RET Z
+    AND $F0
+    OR 1                        ; tinta: siempre 6, 8, $D, $E o $F
+    RET
+
 FIN_V9_PORTADA:
     ASSERT FIN_V9_PORTADA <= $F200
 

@@ -2666,7 +2666,7 @@ MOSTRAR_READY_Y_ARRANCAR_NIVEL:
     LD     A,C
     AND    $48
     XOR    $5F
-    CALL   OBTENER_COLOR_VDP                ; OBTENER_COLOR_VDP (madmix_scr.asm, ver graficos.html/marco de caramelo): deriva un byte de atributo de color a partir de la columna de camara (C)
+    CALL   V9_COLOR_READY                   ; PROYECTO V9990: fondo negro con el V9990 (v9_portada.asm). Original: CALL OBTENER_COLOR_VDP (madmix_scr.asm, ver graficos.html/marco de caramelo): deriva un byte de atributo de color a partir de la columna de camara (C)
     LD     (TEXTO_VACIO_1+1),A    ; escribe ese color en el byte de atributo (offset+1) de TEXTO_VACIO_1
     LD     (TEXTO_READY+1),A       ; ...de TEXTO_READY
     LD     (TEXTO_VACIO_2+1),A     ; ...de TEXTO_VACIO_2 -- las 3 comparten el mismo color, dependiente de la posicion de camara

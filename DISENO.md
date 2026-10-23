@@ -335,3 +335,35 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   `EXCAVADORA`), con brillo y sombra en la pala. Para que quepan, tampoco se
   generan reflejados los sprites de arriba y abajo de la excavadora y del
   hipopótamo (247 patrones de 256).
+
+## 13. f2j (2026-10-23): logo, menú, READY?, dibujos del grafista y R800
+
+- **Logo de Topo atascado (V9990).** Partes del logo (la T, las O) se
+  dibujan sin pausas y el espejo del V9990 solo avanzaba en ellas; además
+  rehacía tablas a cada cambio de color. Ahora `LOGO_ESPERA` vuelve en
+  cuanto llega la interrupción (salta pasos en vez de esperar al V9990),
+  `LOGO_VOLCAR_UNA` recorre las filas por turnos, `LOGO_TRAMO` usa tablas
+  fijas hechas una vez (`LOGO_M` en $DC00, `LOGO_FONDO`/`LOGO_DIF` en
+  $EE00) y `LOGO_WRTVRM_V9` redibuja un poco una vez por interrupción.
+  `LOGO_VOLCAR_UNA` no se anida (`.OCUPADO`): el logo también escribe desde
+  la interrupción, y anidado se colgaba antes de la portada.
+- **«2 JOYSTICK» no se ponía blanco (V9990).** La suma de cada fila del
+  espejo (`V9_LEER_FILA`) era Fletcher de 8 bits: cambiar el color de 8·k
+  bytes en $60 (de $91 a $F1, 12 caracteres) no la cambiaba. La segunda
+  suma gira un bit en cada byte.
+- **READY? con fondo negro (V9990).** `V9_COLOR_READY` (`v9_portada.asm`)
+  sustituye a `CALL OBTENER_COLOR_VDP` en `MOSTRAR_READY_Y_ARRANCAR_NIVEL`
+  y con V9990 deja la tinta y pone el fondo negro. Sin V9990 no cambia.
+- **Excavadora arriba/abajo del grafista.** Estaba en la hoja de sprites
+  (`or fase 1.png`, 352-383 × 48-63): de espaldas (15) y con la pala
+  delante (14). Sustituye a los dibujos de Rubén de f2i.
+- **Trampillas del grafista.** Están abajo en la misma hoja (líneas
+  224-255): B, en transición y A, uno al lado del otro
+  (`TRAMPILLA_DIBUJO`, encajados con las losetas originales). Se pintan
+  sobre las losetas del mapa en cada sitio, con los colores más parecidos
+  de la paleta del nivel. Sustituye a las sintetizadas de f2h.
+- **R800.** En un turbo R (versión 3 en $002D) el arranque llama a CHGCPU
+  con $81 (R800 en modo ROM, con el piloto) justo después de medir la
+  frecuencia, que cuenta vueltas de un bucle.
+- Sin GFX9000 la partida es idéntica a f1c (C-BIOS MSX1 y MSX2). Sin BIOS de
+  turbo R aquí, el R800 está sin probar.

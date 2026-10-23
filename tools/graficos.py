@@ -153,11 +153,16 @@ def distancia(a, b):
 
 
 # Trampillas (puertas de 2 x 2 losetas en un muro): los mapas del grafista
-# no las traen (muro y suelo lisos). Se dibujan sobre esas losetas con la
-# forma de las originales: lo que cambia respecto al muro/suelo de al lado
-# va en el color claro del muro (macizo), en su color principal (trama) o
-# en el mas oscuro del nivel (hueco).
+# no las traen (muro y suelo lisos). Sus dibujos estan en la hoja de sprites
+# ("or fase 1.png", abajo, lineas 224-255): B (hoja a la izquierda), en
+# transicion y A (hoja a la derecha), uno al lado del otro. Cada uno se
+# pinta sobre las losetas del mapa en ese sitio (f2j; en f2h se
+# sintetizaban con la forma de las originales).
 TRAMPILLA = ((74, 75, 67, 68), (71, 72, 73, 69), (76, 77, 78, 79))   # A, B, en transicion
+# por estado: columnas x0-x1 del dibujo en la hoja y columna del bloque
+# donde va x0 (encajadas con las losetas originales)
+TRAMPILLA_DIBUJO = ((296, 320, 5), (240, 264, 3), (265, 296, 1))
+TRAMPILLA_Y = 224
 
 
 def lum(c):
@@ -167,53 +172,23 @@ def lum(c):
 def trampillas(mem, m, filas, t, pal):
     """Devuelve las losetas de las celdas con trampilla y las de respaldo de
     los valores de trampilla del nivel."""
-    lo = {}
-
-    def bloque(vs):
-        b = [[0] * 32 for _ in range(32)]
-        for q, v in enumerate(vs):
-            if v not in lo:
-                lo[v] = loseta_original(mem, v)
-            for j in range(16):
-                for k in range(16):
-                    b[(q // 2) * 16 + j][(q % 2) * 16 + k] = 1 if lo[v][j * 16 + k] == 4 else 0
-        return b
-
-    def suma(b, y, x, rad):
-        return sum(b[y + dy][x + dx] for dy in range(-rad, rad + 1) for dx in range(-rad, rad + 1)
-                   if 0 <= y + dy < 32 and 0 <= x + dx < 32)
-
+    hoja = rgb(Image.open(ruta("or fase 1.png")))
     celdas, respaldo = {}, {}
     arriba = {e[0]: e for e in TRAMPILLA}
     for i in range(filas * 32):
         e = arriba.get(m[i] & 0x7F)
         if not e or i % 32 == 31 or i // 32 + 1 >= filas or (m[i + 1] & 0x7F) != e[1]:
             continue
-        r, c = divmod(i, 32)
-        lado = c - 1 if c > 0 and not arriba.get(m[i - 1] & 0x7F) else (c + 2) % 32
-        liso = bloque((m[r * 32 + lado], m[r * 32 + lado], m[(r + 1) * 32 + lado], m[(r + 1) * 32 + lado]))
         sitio = (i, i + 1, i + 32, i + 33)
-        cuenta = Counter(t[i])
-        claro = max(cuenta, key=lambda k: lum(pal[k]))
-        medio = ([k for k, _ in cuenta.most_common() if k != claro and lum(pal[k]) > 30] or [claro])[0]
-        oscuro = min(range(16), key=lambda k: lum(pal[k]))
-        for estado in TRAMPILLA:
-            b = bloque(estado)
+        for estado, (x0, x1, bx) in zip(TRAMPILLA, TRAMPILLA_DIBUJO):
             nuevas = [bytearray(t[x]) for x in sitio]
             for y in range(32):
-                for x in range(32):
-                    if b[y][x] == liso[y][x] and suma(b, y, x, 1) == suma(liso, y, x, 1):
+                for x in range(x0, x1):
+                    c = hoja.getpixel((x, TRAMPILLA_Y + y))
+                    if c == MAGENTA:
                         continue
-                    w = suma(b, y, x, 1)
-                    if not b[y][x] and w <= 1:
-                        col = oscuro
-                    elif w >= 6:
-                        col = claro
-                    elif 3 <= w <= 5 and suma(b, y, x, 2) >= 9:
-                        col = medio
-                    else:
-                        col = claro if b[y][x] else oscuro
-                    nuevas[(y // 16) * 2 + x // 16][(y % 16) * 16 + x % 16] = col
+                    k = x - x0 + bx
+                    nuevas[(y // 16) * 2 + k // 16][(y % 16) * 16 + k % 16] = cercano(c, pal)
             for q, x in enumerate(sitio):
                 if (m[x] & 0x7F) == estado[q]:
                     celdas[x] = bytes(nuevas[q])
@@ -343,7 +318,6 @@ PUNTOS = (176, 176, 224, 192)   # zona del marcador
 def paleta_marco():
     m = rgb(Image.open(ruta("madmix.png")))
     sp = rgb(Image.open(ruta("or fase 1.png")))
-    sp_excavadora = rgb(Image.open(ruta("excavadora_vertical.png")))
     c = Counter()
     for y in range(196):
         for x in range(256):
@@ -485,10 +459,10 @@ SPRITES = {
     # poder; lo cambia V9_META_ELEGIR)
     64: (c16(304, Y0), None),
 }
-# El grafista solo dibujo la excavadora de lado: hacia abajo (14) y hacia
-# arriba (15) son los dibujos de Ruben (graficos/remake/excavadora_vertical.png,
-# a partir de los originales de MSX1).
-EXCAVADORA = {14: (0, 0, 20, 18), 15: (24, 0, 20, 18)}
+# Excavadora hacia abajo (14, con la pala delante) y hacia arriba (15, de
+# espaldas): los dibujos del grafista junto a la caja de la bola de poder
+# (f2j; en f2i eran los de Ruben, graficos/remake/excavadora_vertical.png).
+EXCAVADORA = {14: (368, 48, 16, 16), 15: (352, 48, 16, 16)}
 # Hacia arriba y hacia abajo no hay izquierda ni derecha: el juego no usa
 # reflejados los sprites de esas direcciones (comecocos, excavadora e
 # hipopotamo: subtablas A-D), y sus patrones hacen falta.
@@ -522,7 +496,6 @@ def original(mem, i, espejo):
 
 def sprites(mem):
     sp = rgb(Image.open(ruta("or fase 1.png")))
-    sp_excavadora = rgb(Image.open(ruta("excavadora_vertical.png")))
     c = Counter()
     for a, b in SPRITES.values():
         for r in (a, b):
@@ -576,9 +549,8 @@ def sprites(mem):
             r = (b if espejo else a) or a
             reflejar = espejo and not b
             if i in EXCAVADORA:
-                r, reflejar, hoja = EXCAVADORA[i], False, sp_excavadora
-            else:
-                hoja = sp
+                r, reflejar = EXCAVADORA[i], False
+            hoja = sp
             x, y, w, h = r
             q, _, _ = cuantizar(hoja.crop((x, y, x + w, y + h)), pal_q, MAGENTA)
             q = bytes(15 if v == 9 else v for v in q)     # el rosa va al 15
