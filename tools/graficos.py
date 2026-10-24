@@ -628,19 +628,26 @@ def datos_pepsi():
 
 def sprites_pepsi(mem, sp, pal, patron):
     """Partes (dx, dy, patron) de la mascota de Pepsi para el V9990: los
-    pixeles que la mascara borra en el amarillo del comecocos del remake y
-    los de tinta (las lineas, oscuras en el TMS) en negro, en la misma cuadricula de 24x24 que el
-    original. Al reflejar se respeta el hueco de la derecha (el byte de
-    indicador de PTR_TABLA_SPRITES)."""
-    x, y, w, h = SPRITES[0][0]
-    c = Counter(p for p in sp.crop((x, y, x + w, y + h)).getdata() if p != MAGENTA)
-    amarillo = 9                # ver sprites(): rojo claro en la paleta del TMS
-    negro = cercano((0, 0, 0), pal)
+    dibujos del grafista (graficos/remake/pepsi.png, 18 de 24x24 en el
+    orden de PEPSI_IDS, f2n; los de la bola de poder ya en rojo), en la
+    misma cuadricula de 24x24 que el original. Al reflejar se respeta el
+    hueco de la derecha (el byte de indicador de PTR_TABLA_SPRITES)."""
+    im = rgb(Image.open(ruta("pepsi.png")))
+    if im.size != (24 * len(PEPSI_IDS), 24):
+        sys.exit(f"ERROR: pepsi.png mide {im.size}")
+    # amarillo en el 9: con la paleta del TMS es rojo claro (la mascota
+    # hacia arriba con la bola de poder, que no tiene dibujo rojo)
+    colores = {MAGENTA: 0, (252, 252, 111): 9}
     meta = {}
-    for i, d in datos_pepsi().items():
+    for k, i in enumerate(PEPSI_IDS):
         hueco = PEPSI_FLAGS.get(i, mem[0x91C3 + i * 4 + 2]) & 7
-        ancho = max(c for r in range(24) for c in range(24)
-                    if (d[r * 6 + 3 + c // 8] >> (7 - c % 8)) & 1 or not (d[r * 6 + c // 8] >> (7 - c % 8)) & 1)
+        d = [[im.getpixel((k * 24 + c, r)) for c in range(24)] for r in range(24)]
+        for fila in d:
+            for c, p in enumerate(fila):
+                if p not in colores:
+                    colores[p] = cercano(p, pal)
+                fila[c] = colores[p]
+        ancho = max(c for r in range(24) for c in range(24) if d[r][c])
         borde = max(23 - hueco, ancho)
         # solo las vistas de lado tienen version reflejada propia (no
         # caben mas patrones); las demas usan la misma
@@ -648,13 +655,8 @@ def sprites_pepsi(mem, sp, pal, patron):
             q = [0] * (32 * 32)
             for r in range(24):
                 for col in range(24):
-                    b = r * 6 + col // 8
-                    mascara = (d[b] >> (7 - col % 8)) & 1
-                    tinta = (d[b + 3] >> (7 - col % 8)) & 1
-                    if tinta or not mascara:
-                        cx = borde - col if espejo else col
-                        if True:
-                            q[r * 32 + cx] = negro if tinta else amarillo
+                    if d[r][col]:
+                        q[r * 32 + (borde - col if espejo else col)] = d[r][col]
             partes = []
             for py in (0, 16):
                 for px in (0, 16):

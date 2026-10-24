@@ -433,3 +433,17 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   50 y 60 Hz: el logo pasa a negro limpio.
 - Sin GFX9000 la partida es idéntica a f2l (C-BIOS MSX1 y MSX2), y con
   GFX9000 la salida del TMS también.
+
+## 17. f2n (2026-10-24): la mascota de Pepsi del grafista
+
+- `graficos/remake/pepsi.png`: los 18 dibujos de la mascota redibujados por
+  el grafista (24×24, en el orden de PEPSI_IDS; le pasamos los originales
+  en `pepsi_grafista/pepsi_sprites.zip`). Amarillo, negro, blanco (ojos) y,
+  con la bola de poder (7-11 y 57), rojo. `sprites_pepsi()` los lee de ahí
+  (el amarillo a la entrada 9, el resto al color más cercano de la paleta
+  de sprites). 252 patrones de 256.
+- Con la bola de poder ya no hace falta la paleta del TMS para ponerla
+  roja, salvo hacia arriba (6 y 63), que no tiene dibujo rojo:
+  `V9_META_ELEGIR` solo cambia la paleta de esos dos.
+- Sin GFX9000 la partida es idéntica a f2m, y con GFX9000 la salida del
+  TMS también.

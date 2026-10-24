@@ -276,18 +276,16 @@ V9_META_ELEGIR:
 .ROJO:
     DW V9_META_ROJO_ARRIBA
 .PEPSI_MODO:
-    ; con la bola de poder, la mascota en rojo: la paleta del TMS tiene
-    ; rojo claro donde la de los sprites tiene su amarillo
+    ; con la bola de poder, la mascota en rojo: los dibujos del grafista
+    ; ya lo son (f2n), salvo hacia arriba (6 y 63), que se pone roja con
+    ; la paleta del TMS (rojo claro donde la de los sprites tiene su amarillo)
     LD A, (MODO_ESPECIAL)
     AND $07
     DEC A
     JR NZ, .PEPSI_MAPA
     LD A, L
-    CP 24
-    JR C, .PEPSI_ROJA           ; 0-11
-    CP 57 * 2
-    JR Z, .PEPSI_ROJA
-    CP 57 * 2 + 1
+    AND $FE
+    CP 6 * 2
     JR Z, .PEPSI_ROJA
     CP 63 * 2
     JR C, .PEPSI_MAPA
