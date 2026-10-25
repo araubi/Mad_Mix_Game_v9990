@@ -2743,7 +2743,11 @@ ESPERA_150_FRAMES:
 ; las losetas comodin ($3C) y las posiciones de "bola especial"
 ; adicionales, sin reconciliar del todo. ---
 VERIFICAR_FIN_NIVEL:
+    IFDEF PASAR_FASE
+    CALL   TRUCO_PASAR_FASE         ; PROYECTO (ROM de pruebas): F1 da la fase por completada; acaba en ACTUALIZAR_LOSETA_BOLA_ESPECIAL
+    ELSE
     CALL   ACTUALIZAR_LOSETA_BOLA_ESPECIAL ; llamada una vez por frame (VERIFICAR_FIN_NIVEL se ejecuta cada frame). Incrementa TEMPORIZADOR_PARPADEO_BOLA y usa su bit 6 (cambia cada 64 incrementos, no cada 4) para escribir $38/$39 en la loseta de POSICION_PARPADEO_BOLA -- CORREGIDO: verificado en vivo por el usuario que esa loseta NO parpadea visiblemente en el juego real; el parpadeo del comecocos que SI se ve en pantalla durante el modo especial es otro mecanismo distinto (ML_POWER_BLINK_COLOR en madmix_scr_body.asm, alterna COLOR_ACTUAL en los ultimos 60 frames del modo).
+    ENDIF
     LD     HL,(CONTADOR_BOLAS_COMIDAS)
     LD     DE,(REGISTRO_NIVEL_OBJETIVO_BOLAS)
     AND    A

@@ -474,3 +474,14 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   la izquierda y las 4 filas de arriba del suelo que lleva el mapa junto
   al mismo muro (si sale al menos 3 veces). Cambian los niveles 1, 3, 9, 11
   y 15 (vistos uno a uno con todo comido); las bolas, igual que antes.
+
+## 20. ROM de pruebas «pasar fase» (2026-10-25)
+
+Pedida por Rubén para el testeo: `python3 tools/build.py --pasarfase`
+ensambla con `-DPASAR_FASE` y deja `build/madmix_v9990_pasarfase.rom`.
+VERIFICAR_FIN_NIVEL llama a TRUCO_PASAR_FASE (optimizaciones.asm) en
+vez de a ACTUALIZAR_LOSETA_BOLA_ESPECIAL (misma longitud: no se mueve
+nada del motor, y el truco de vidas sigue en $909A). Si F1 (fila 6,
+bit 5) acaba de pulsarse, copia el objetivo del nivel al contador de
+cocos comidos y la fase termina por el camino normal; una fase por
+pulsación. Sin la opción, la ROM sale idéntica a f2p.

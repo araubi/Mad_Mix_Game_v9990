@@ -457,6 +457,36 @@ DIBUJAR_FILA_DESPLAZADA_6:
     RL B
     RET
 
+    IFDEF PASAR_FASE
+; --------------------------------------------------------------
+;  TRUCO_PASAR_FASE (solo en la ROM de pruebas, build.py --pasarfase):
+;  al pulsar F1 (fila 6, bit 5) iguala el contador de cocos comidos
+;  al objetivo del nivel, y VERIFICAR_FIN_NIVEL da la fase por
+;  completada por el camino normal. Cuenta una vez por pulsacion.
+; --------------------------------------------------------------
+TRUCO_PASAR_FASE:
+    DI
+    IN A, ($AA)
+    AND $F0
+    OR 6
+    OUT ($AA), A
+    IN A, ($A9)
+    EI
+    AND $20                     ; 0 = F1 pulsada
+    LD HL, F1_ANTES
+    LD B, (HL)
+    LD (HL), A
+    JR NZ, .FIN
+    OR B                        ; antes suelta?
+    JR Z, .FIN
+    LD HL, (REGISTRO_NIVEL_OBJETIVO_BOLAS)
+    LD (CONTADOR_BOLAS_COMIDAS), HL
+.FIN:
+    JP ACTUALIZAR_LOSETA_BOLA_ESPECIAL
+F1_ANTES:
+    DB 0
+    ENDIF
+
 ; --------------------------------------------------------------
 ;  TABLA_ESPEJO: byte con los bits en orden inverso (256 bytes,
 ;  alineada a pagina).
