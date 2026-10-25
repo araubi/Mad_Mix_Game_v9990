@@ -983,20 +983,24 @@ HNDLR_AUTOCOCO_ABAJO:
     JR HNDLR_AUTOCOCO_COMUN
 
 ; --- Cola comun de las 4 flechas (PROYECTO: antes cada una llevaba la
-; suya). Ademas de lo que hacia el original, deja la cache de tipo de
-; CONSULTAR_PROXIMA_LOSETA_EN_ESTA_DIRECCION en 15 (suelo_sin_bola), como
-; hace HNDLR_BOLITA_NORMAL: sin eso, si el comecocos se queda parado en
-; la flecha (empujando contra una pared), el tic siguiente vuelve a leer
-; la flecha de la cache y la cuenta otra vez, y el nivel se acaba con
-; una bolita sin comer (bug del juego original; Ruben, fase 2). ---
+; suya). El tipo de la loseta pisada se guarda en una cache por columna
+; (CACHE_TIPO_LOSETA): si el comecocos se queda parado en la flecha
+; (empujando contra una pared), los tics siguientes la siguen viendo
+; como flecha. El original volvia a contarla y el nivel se acababa con
+; una bolita sin comer (Ruben, fase 2). Ahora, si la loseta ya es la
+; comodin (flecha comida), solo se vuelve a fijar la direccion forzada,
+; como hacia el original (que la cache siga diciendo flecha es lo que
+; mantiene esa direccion: con suelo_sin_bola, HNDLR_SUELO_SIN_BOLA la
+; borraria; por eso no se toca la cache, f2o). ---
 HNDLR_AUTOCOCO_COMUN:
     LD (DIRECCION_FORZADA), A
+    LD A, (REGISTRO_NIVEL_LOSETA_COMODIN)
+    CP (HL)
+    JR Z, HNDLR_AUTOCOCO_EXIT    ; ya comida: no cuenta otra vez
     LD A, $02
     LD (EVENTO_SONIDO_PENDIENTE), A
     LD A, (REGISTRO_NIVEL_LOSETA_COMODIN)
     CALL DIBUJAR_CAMBIO_LOSETA
-    LD A, 15
-    LD (CACHE_TIPO_LOSETA), A
     PUSH HL
     LD HL, $0002
     CALL DIBUJAR_MARCADOR_PUNTOS

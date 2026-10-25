@@ -447,3 +447,17 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   `V9_META_ELEGIR` solo cambia la paleta de esos dos.
 - Sin GFX9000 la partida es idéntica a f2m, y con GFX9000 la salida del
   TMS también.
+
+## 18. f2o (2026-10-25): las flechas vuelven a obligar a girar
+
+- **Regresión de f2m (Rubén).** Poner CACHE_TIPO_LOSETA a 15 al comer una
+  flecha hacía que el tic siguiente despachara HNDLR_SUELO_SIN_BOLA, que con
+  TEMPORIZADOR_DIRECCION_FORZADA a 0 borra DIRECCION_FORZADA: ninguna flecha
+  obligaba ya a girar. En el original es la cache «atrasada» (sigue diciendo
+  flecha) la que mantiene la dirección forzada.
+- Ahora la cache no se toca: HNDLR_AUTOCOCO_COMUN fija la dirección siempre
+  y, si la loseta ya es la comodín (flecha comida), sale sin volver a
+  contarla, dibujarla ni sumar puntos. Con el replay de Rubén la partida va
+  igual que con f2l (las flechas mandan) y bolitas que quedan + comidas se
+  mantiene (114 en la fase 1, 147 en la 2).
+- La partida de compara.sh no pasa por flechas: no detectó la regresión.
