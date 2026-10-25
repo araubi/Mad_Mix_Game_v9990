@@ -246,9 +246,9 @@ def laberinto(mem):
             or [frecuentes[n].get(comodin)]
         return suelos, en_comodin
 
-    # Objetos que algun mapa trae dibujados, por valor y en cualquier
-    # nivel: para las celdas cuyo mapa no lo dibuja y no hay otra igual en
-    # su nivel (f2q: el icono de excavadora del nivel 13).
+    # Iconos que traen dibujados los mapas, por valor y en cualquier nivel:
+    # todas las celdas de un icono llevan el mas frecuente (f2q: el mapa del
+    # nivel 13 no trae el de excavadora; f2s: el del 14 trae uno mal).
     objeto_en = {}
     for n in NIVELES:
         _, m, filas, comodin, t = datos[n]
@@ -282,8 +282,8 @@ def laberinto(mem):
                     and m[i] in con_valor:
                 t[i] = min(sorted(con_valor[m[i]]), key=lambda x: distancia(x, t[i]))
                 arregladas += 1
-            elif m[i] in OBJETOS and t[i] in suelos and m[i] not in con_valor \
-                    and m[i] in objeto_en:
+            elif m[i] in OBJETOS and m[i] in objeto_en \
+                    and t[i] != objeto_en[m[i]].most_common(1)[0][0]:
                 t[i] = objeto_en[m[i]].most_common(1)[0][0]
                 arregladas += 1
         if arregladas:

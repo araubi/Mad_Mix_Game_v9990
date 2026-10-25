@@ -502,3 +502,11 @@ El mapa del grafista del nivel 14 trae amarilla una flecha (fila 6,
 columna 31, valor 53). Las flechas (FLECHAS = 52, 53, 54) tapan la
 loseta entera, así que graficos.py dibuja todas las de un valor con la
 más frecuente de ese valor en su nivel. Es la única que cambia.
+
+## 23. f2s (2026-10-25): segundo icono de excavadora del nivel 14
+
+El nivel 14 tiene dos casillas de excavadora juntas (fila 24, columnas
+16 y 17) y el mapa del grafista dibuja mal la segunda. Ahora todas las
+casillas de un icono de transformación (OBJETOS) llevan el dibujo más
+frecuente de ese valor en todos los mapas, no solo las que salen como
+suelo (§21).
