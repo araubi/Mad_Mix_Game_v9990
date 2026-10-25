@@ -56,6 +56,8 @@ NIVELES = range(1, 16)
 # valores de la matriz que se comen o se recogen (bolas, flechas, objetos)
 COMIBLES = set(range(45, 55)) | set(range(59, 63))
 BLOQUE_NIVEL = 0x1000
+# iconos de transformacion: hipopotamo (61) y excavadora (62)
+OBJETOS = {61, 62}
 MAX_LOSETAS = 1920              # $40000-$7BFFF: 120 filas de 16 losetas
 
 
@@ -231,16 +233,32 @@ def laberinto(mem):
             f.setdefault(m[i], Counter())[t[i]] += 1
         frecuentes[n] = {v: c.most_common(1)[0][0] for v, c in f.items()}
 
-    niveles_bin = bytearray()
-    for n in NIVELES:
-        pal, m, filas, comodin, t = datos[n]
-        # suelo de cada celda: el mas parecido de los que aparecen sobre todo
-        # con el valor comodin (alguna celda comodin del mapa trae una bola
-        # dibujada, y alguna otra celda trae el suelo liso)
+    # suelo de cada celda: el mas parecido de los que aparecen sobre todo
+    # con el valor comodin (alguna celda comodin del mapa trae una bola
+    # dibujada, y alguna otra celda trae el suelo liso)
+    def suelos_de(n):
+        _, m, filas, comodin, t = datos[n]
         en_comodin = Counter(t[i] for i in range(filas * 32) if m[i] == comodin)
         en_otras = Counter(t[i] for i in range(filas * 32) if m[i] != comodin)
         suelos = sorted(k for k, c in en_comodin.items() if c > en_otras[k]) \
             or [frecuentes[n].get(comodin)]
+        return suelos, en_comodin
+
+    # Objetos que algun mapa trae dibujados, por valor y en cualquier
+    # nivel: para las celdas cuyo mapa no lo dibuja y no hay otra igual en
+    # su nivel (f2q: el icono de excavadora del nivel 13).
+    objeto_en = {}
+    for n in NIVELES:
+        _, m, filas, comodin, t = datos[n]
+        suelos_n = suelos_de(n)[0]
+        for i in range(filas * 32):
+            if m[i] in OBJETOS and t[i] not in suelos_n:
+                objeto_en.setdefault(m[i], Counter())[t[i]] += 1
+
+    niveles_bin = bytearray()
+    for n in NIVELES:
+        pal, m, filas, comodin, t = datos[n]
+        suelos, en_comodin = suelos_de(n)
         # celdas con bola (u otro objeto) que el mapa del grafista trae
         # vacias (en el nivel 1, junto a la salida del comecocos): se
         # dibujan con la loseta del mismo valor sobre el suelo mas parecido
@@ -254,6 +272,10 @@ def laberinto(mem):
             if m[i] != comodin and t[i] in suelos and frecuentes[n][m[i]] not in suelos \
                     and m[i] in con_valor:
                 t[i] = min(sorted(con_valor[m[i]]), key=lambda x: distancia(x, t[i]))
+                arregladas += 1
+            elif m[i] in OBJETOS and t[i] in suelos and m[i] not in con_valor \
+                    and m[i] in objeto_en:
+                t[i] = objeto_en[m[i]].most_common(1)[0][0]
                 arregladas += 1
         if arregladas:
             print(f"  nivel {n:2}: {arregladas} celdas sin su objeto en el mapa")

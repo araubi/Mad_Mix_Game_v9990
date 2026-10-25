@@ -485,3 +485,13 @@ nada del motor, y el truco de vidas sigue en $909A). Si F1 (fila 6,
 bit 5) acaba de pulsarse, copia el objetivo del nivel al contador de
 cocos comidos y la fase termina por el camino normal; una fase por
 pulsación. Sin la opción, la ROM sale idéntica a f2p.
+
+## 21. f2q (2026-10-25): icono de excavadora del nivel 13
+
+El mapa del grafista del nivel 13 trae suelo liso en la celda del icono
+de excavadora (valor 62), y no hay otra en ese nivel de la que copiarlo.
+graficos.py junta los iconos de transformación (OBJETOS = 61, 62) que
+dibujan los mapas de todos los niveles y, si una celda con ese valor sale
+como suelo y su nivel no tiene otra dibujada, pone el más frecuente. Los
+iconos usan colores fijos de la paleta (7, 13 y 15), así que valen en
+cualquier nivel. Solo cambia esa celda.
