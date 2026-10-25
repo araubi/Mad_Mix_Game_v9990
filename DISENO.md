@@ -461,3 +461,16 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   igual que con f2l (las flechas mandan) y bolitas que quedan + comidas se
   mantiene (114 en la fase 1, 147 en la 2).
 - La partida de compara.sh no pasa por flechas: no detectó la regresión.
+
+## 19. f2p (2026-10-25): suelo bajo las flechas comidas
+
+- **Raya de 1 píxel al comer flechas (nivel 9, Rubén).** El suelo que queda
+  al comerse algo (t1, `laberinto()` en graficos.py) era el suelo del mapa
+  más parecido al dibujo de la celda. Una flecha tapa la celda entera, así
+  que el parecido no dice nada, y salía una variante rara del suelo: la que
+  lleva el borde de 1 píxel de un muro a la izquierda.
+- Ahora, si el mejor parecido falla en más de la mitad de los píxeles, se
+  parte del suelo más frecuente del nivel y se le ponen las 4 columnas de
+  la izquierda y las 4 filas de arriba del suelo que lleva el mapa junto
+  al mismo muro (si sale al menos 3 veces). Cambian los niveles 1, 3, 9, 11
+  y 15 (vistos uno a uno con todo comido); las bolas, igual que antes.

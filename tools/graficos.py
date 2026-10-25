@@ -53,6 +53,8 @@ ARREGLOS = {(0xFE, 0xFE, 0xFE): (0xFF, 0xFF, 0xFF), (0xED, 0xED, 0x2D): (0xFC, 0
 EXTRA = {2: (0x16, 0x20, 0x1F), 6: (0x4A, 0x36, 0x2E), 14: (0x4A, 0x36, 0x2E), 9: (0x13, 0x00, 0x1F)}
 
 NIVELES = range(1, 16)
+# valores de la matriz que se comen o se recogen (bolas, flechas, objetos)
+COMIBLES = set(range(45, 55)) | set(range(59, 63))
 BLOQUE_NIVEL = 0x1000
 MAX_LOSETAS = 1920              # $40000-$7BFFF: 120 filas de 16 losetas
 
@@ -260,6 +262,34 @@ def laberinto(mem):
             t[i] = x
         if con_trampilla:
             print(f"  nivel {n:2}: {len(con_trampilla) // 4} trampillas dibujadas")
+        # El suelo cambia junto a algunos muros (el borde de un muro a la
+        # izquierda, una sombra arriba). Si lo que hay en la celda tapa el
+        # suelo entero (las flechas), no se puede elegir por parecido: se
+        # parte del suelo mas frecuente y se le ponen las 4 columnas de la
+        # izquierda y las 4 filas de arriba del suelo que lleva el mapa junto
+        # al mismo muro (si sale al menos 3 veces) (f2p; antes salia un
+        # borde de muro de 1 pixel en las flechas comidas del nivel 9).
+        def muro(i):
+            return 0 <= i < filas * 32 and m[i] != comodin and m[i] not in COMIBLES
+
+        junto = ({}, {})            # suelos con muro a la izquierda / arriba
+        for i in range(filas * 32):
+            if m[i] == comodin and t[i] in suelos:
+                if i % 32 and muro(i - 1):
+                    junto[0].setdefault(t[i - 1], Counter())[t[i]] += 1
+                if muro(i - 32):
+                    junto[1].setdefault(t[i - 32], Counter())[t[i]] += 1
+
+        def suelo_tapado(i):
+            q = bytearray(max(suelos, key=lambda s: en_comodin[s]))
+            for lado, vecina in ((0, i - 1 if i % 32 else -1), (1, i - 32)):
+                if muro(vecina) and t[vecina] in junto[lado]:
+                    s, veces = junto[lado][t[vecina]].most_common(1)[0]
+                    if veces >= 3:
+                        for p in range(256):
+                            if (p % 16 if lado == 0 else p // 16) < 4:
+                                q[p] = s[p]
+            return bytes(q)
         bloque = bytearray(BLOQUE_NIVEL)
         for i in range(filas * 32):
             t0 = t[i]
@@ -267,6 +297,8 @@ def laberinto(mem):
                 t1 = t0
             else:
                 t1 = min(suelos, key=lambda s: distancia(s, t0))
+                if distancia(t1, t0) > 128:
+                    t1 = suelo_tapado(i)
             a, b = id_de(t0), id_de(t1)
             bloque[i * 4:i * 4 + 4] = bytes((m[i], a & 0xFF, b & 0xFF, (a >> 8) | ((b >> 8) << 4)))
         pal_bin = b"".join(c5(c) for c in pal)
