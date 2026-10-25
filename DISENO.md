@@ -495,3 +495,10 @@ dibujan los mapas de todos los niveles y, si una celda con ese valor sale
 como suelo y su nivel no tiene otra dibujada, pone el más frecuente. Los
 iconos usan colores fijos de la paleta (7, 13 y 15), así que valen en
 cualquier nivel. Solo cambia esa celda.
+
+## 22. f2r (2026-10-25): flecha amarilla del nivel 14
+
+El mapa del grafista del nivel 14 trae amarilla una flecha (fila 6,
+columna 31, valor 53). Las flechas (FLECHAS = 52, 53, 54) tapan la
+loseta entera, así que graficos.py dibuja todas las de un valor con la
+más frecuente de ese valor en su nivel. Es la única que cambia.

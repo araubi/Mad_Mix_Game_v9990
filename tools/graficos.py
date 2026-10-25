@@ -58,6 +58,8 @@ COMIBLES = set(range(45, 55)) | set(range(59, 63))
 BLOQUE_NIVEL = 0x1000
 # iconos de transformacion: hipopotamo (61) y excavadora (62)
 OBJETOS = {61, 62}
+# flechas de direccion obligatoria
+FLECHAS = {52, 53, 54}
 MAX_LOSETAS = 1920              # $40000-$7BFFF: 120 filas de 16 losetas
 
 
@@ -268,6 +270,13 @@ def laberinto(mem):
                 con_valor.setdefault(m[i], set()).add(t[i])
         arregladas = 0
         t = list(t)
+        # Las flechas tapan la loseta entera: todas como la mas frecuente
+        # de su valor en el nivel (f2r: el mapa del nivel 14 trae una
+        # amarilla).
+        for i in range(filas * 32):
+            if m[i] in FLECHAS and t[i] != frecuentes[n][m[i]]:
+                t[i] = frecuentes[n][m[i]]
+                arregladas += 1
         for i in range(filas * 32):
             if m[i] != comodin and t[i] in suelos and frecuentes[n][m[i]] not in suelos \
                     and m[i] in con_valor:
