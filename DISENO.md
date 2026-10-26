@@ -594,3 +594,12 @@ tiene un suelo que no sale en ninguna otra bola. graficos.py cambia
 cada bola (45-47) con un dibujo único en su nivel por la más frecuente
 de su valor con los mismos muros alrededor (3 de 4 lados). Cambian
 también una del 9 (17, 25) y una del 11 (16, 3).
+
+## 29. f2x (2026-10-26): logo de Topo del marcador entero
+
+El grafista vio en la tele que el logo de Topo del marcador no se leía.
+capa_a() copiaba de la maqueta (madmix.png) solo las líneas 0-187 al
+marco (líneas 8-195 del V9990) y ponía en negro de la 196 en adelante;
+el logo baja hasta la 191 de la maqueta y perdía sus 4 líneas de abajo.
+Ahora se copian las líneas 0-191 (V9990 8-199) y el negro empieza en la
+200. Las líneas 200-207 de la maqueta (una tira de colores) siguen fuera.

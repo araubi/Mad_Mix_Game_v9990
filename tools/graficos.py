@@ -476,7 +476,7 @@ def capa_a(pal):
     # es la y-8 de la maqueta
     q, w, _ = cuantizar(m, pal)
     marco = bytearray(216 * 256)
-    for y in range(8, 8 + 188):
+    for y in range(8, 8 + 192):         # f2x: hasta la linea 199 (el logo de Topo baja a la 191 de la maqueta)
         my = y - 8
         for x in range(256):
             v = q[my * w + x]
@@ -485,7 +485,7 @@ def capa_a(pal):
             if (VIDAS[0] <= x < VIDAS[2] or PUNTOS[0] <= x < PUNTOS[2]) and VIDAS[1] <= my < VIDAS[3]:
                 v = 1           # lo dibuja el marcador
             marco[y * 256 + x] = v or 1
-    for y in list(range(8)) + list(range(196, 216)):
+    for y in list(range(8)) + list(range(200, 216)):
         for x in range(256):
             marco[y * 256 + x] = 1
     poner(0, 256, marco, 256)
