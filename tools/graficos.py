@@ -311,7 +311,28 @@ def laberinto(mem):
                 if muro(i - 32):
                     junto[1].setdefault(t[i - 32], Counter())[t[i]] += 1
 
+        # Mejor aun: el suelo de las celdas vacias con los mismos muros
+        # alrededor (izquierda, arriba, derecha, abajo; al menos 3 de los 4
+        # lados iguales) (f2t: en el nivel 1 el Super Coco tiene muro a la
+        # derecha y su suelo lleva esa sombra).
+        def vecinos(i):
+            return tuple(t[j] if muro(j) else None
+                         for j in (i - 1 if i % 32 else -1, i - 32, i + 1 if i % 32 != 31 else -1, i + 32))
+
+        mismo_entorno = {}
+        for i in range(filas * 32):
+            if m[i] == comodin and t[i] in suelos:
+                mismo_entorno.setdefault(vecinos(i), Counter())[t[i]] += 1
+
         def suelo_tapado(i):
+            # el entorno que mas lados comparte (mismo muro o mismo hueco);
+            # a igualdad, el mas frecuente
+            v = vecinos(i)
+            mejor = max(mismo_entorno.items(), default=None,
+                        key=lambda e: (sum(a == b for a, b in zip(e[0], v)),
+                                       e[1].most_common(1)[0][1]))
+            if mejor and sum(a == b for a, b in zip(mejor[0], v)) >= 3:
+                return mejor[1].most_common(1)[0][0]
             q = bytearray(max(suelos, key=lambda s: en_comodin[s]))
             for lado, vecina in ((0, i - 1 if i % 32 else -1), (1, i - 32)):
                 if muro(vecina) and t[vecina] in junto[lado]:

@@ -531,3 +531,14 @@ Pedida por Rubén: muñecos con volumen. `python3 tools/build.py --volumen`
 - Con la bola de poder, la mascota de Pepsi hacia arriba sale amarilla
   (su rojo venía de la paleta del TMS).
 - La entrada 0 es el color del borde: va en negro.
+
+## 25. f2t (2026-10-26): suelo bajo el Super Coco del nivel 1
+
+Rubén (y el grafista): al comer el Super Coco del nivel 1 quedaba el
+suelo con sombra arriba, y la casilla tiene muro a la derecha. Para las
+celdas tapadas (bola grande, Super Coco, flechas), graficos.py busca
+primero las celdas vacías del nivel con el mismo entorno: muro o hueco
+a la izquierda, arriba, derecha y abajo, con la misma loseta de muro.
+Vale el entorno que comparte al menos 3 de los 4 lados, y a igualdad el
+más frecuente; si no hay, sigue la mezcla de §19. Cambia el suelo de 38
+celdas del nivel 1 y de ninguna de las demás fases.
