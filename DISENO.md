@@ -714,3 +714,18 @@ composición ~232 ms. Causas y arreglos:
 - Comprobado: huecos del anillo = losetas (12 tics, 0 fallos), muñecos =
   modelo (5584 píxeles, 0 fallos), marco igual en las dos páginas, 15
   fases, demo, fin de partida y vuelta al menú. MSX1 y V9990 igual.
+
+## 33. f31 (2026-10-26): muñecos mirando a la izquierda en MSX2
+
+Rubén: en MSX2 el comecocos y los fantasmas que miran a la izquierda
+salían mal. El MSX2 interpretaba al revés los bits de espejo del motor.
+En el motor del MSX1 el bit 7 es el espejo horizontal (invierte el orden
+de los 3 bytes de cada fila y los bits de cada byte, en máscara y en
+tinta) y el bit 6 el vertical (intercambia filas de 6 bytes). El MSX2
+hacía con el bit 6 el cambio de bytes y con el bit 7 solo los bits.
+M2_CONVERTIR lo hace ya como el motor (M2_ESPEJO, en la parte alta).
+La comprobación anterior no lo vio porque en el MSX1 se volcaba la RAM
+con el dibujo ya girado. Ahora: MSX1 contra el modelo con muñecos en
+otra orientación, 17132 píxeles sin fallos; MSX2 contra el modelo con
+37 muñecos en espejo, 15975 píxeles sin fallos.
+Desde f31 el zip de MSX2 ya no lleva la ROM con volumen (Rubén).

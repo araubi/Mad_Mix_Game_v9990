@@ -858,7 +858,23 @@ M2_CONVERTIR:
     XOR (IX + 3)
     AND $C0
     LD (M2_CV_GIRO), A
+    ; bit 6: espejo vertical (el motor intercambia las filas de 6 bytes
+    ; de los extremos hacia el centro): se leen de abajo arriba
     LD HL, (M2_A_PTR)
+    LD DE, 0
+    AND $40
+    JR Z, .PASO
+    LD A, (M2_A_ALTO)
+    DEC A
+    LD E, A
+    ADD A, A
+    ADD A, E
+    ADD A, A
+    LD E, A
+    ADD HL, DE
+    LD DE, -12
+.PASO:
+    LD (M2_CV_PASO), DE
     LD A, (M2_A_ALTO)
     LD B, A
 .FILA:
@@ -866,32 +882,14 @@ M2_CONVERTIR:
     LD DE, M2_CV_M
     LD BC, 6
     LDIR
+    LD DE, (M2_CV_PASO)
+    ADD HL, DE
     PUSH HL
-    LD A, (M2_CV_GIRO)
-    BIT 6, A
-    JR Z, .SIN_BYTES
-    LD HL, M2_CV_M              ; orden de los bytes al reves
-    CALL .CAMBIAR
-    LD HL, M2_CV_M + 3
-    CALL .CAMBIAR
-.SIN_BYTES:
+    ; bit 7: espejo horizontal (el motor invierte el orden de los 3
+    ; bytes y los bits de cada uno, en la mascara y en la tinta)
     LD A, (M2_CV_GIRO)
     RLA
-    JR NC, .SIN_BITS
-    LD HL, M2_CV_M              ; y los bits de cada byte
-    LD E, 6
-.INVERTIR:
-    LD C, (HL)
-    LD B, 8
-.BIT:
-    RR C
-    RLA
-    DJNZ .BIT
-    LD (HL), A
-    INC HL
-    DEC E
-    JR NZ, .INVERTIR
-.SIN_BITS:
+    CALL C, M2_ESPEJO
     LD HL, M2_CV_M
     LD DE, M2_CV_SALIDA
     LD B, 3
@@ -938,16 +936,6 @@ M2_CONVERTIR:
     POP HL
     POP BC
     DJNZ .FILA
-    RET
-.CAMBIAR:
-    LD A, (HL)
-    INC HL
-    INC HL
-    LD C, (HL)
-    LD (HL), A
-    DEC HL
-    DEC HL
-    LD (HL), C
     RET
 ; pixel siguiente: tinta -> 1; mascara a 0 -> 8; si no, 0
 .PIXEL:
@@ -1612,7 +1600,8 @@ M2_BAJO           EQU M2_CV_GIRO + 1
 M2_ALTO           EQU M2_BAJO + 1
 M2_TX_FILA        EQU M2_ALTO + 1
 M2_TX_COLUMNA     EQU M2_TX_FILA + 1
-FIN_M2_TRABAJO    EQU M2_TX_COLUMNA + 1
+M2_CV_PASO        EQU M2_TX_COLUMNA + 1
+FIN_M2_TRABAJO    EQU M2_CV_PASO + 2
     ASSERT FIN_M2_TRABAJO <= TRASPUESTA
 
 ; --------------------------------------------------------------
@@ -1871,6 +1860,37 @@ M2_UN_COLOR:
     EI
     RET
 
+; espejo horizontal de la fila en M2_CV_M (mascara y tinta): orden de
+; los 3 bytes al reves y bits de cada byte en espejo, como el motor
+M2_ESPEJO:
+    LD HL, M2_CV_M
+    CALL .CAMBIAR
+    LD HL, M2_CV_M + 3
+    CALL .CAMBIAR
+    LD HL, M2_CV_M
+    LD E, 6
+.INVERTIR:
+    LD C, (HL)
+    LD B, 8
+.BIT:
+    RR C
+    RLA
+    DJNZ .BIT
+    LD (HL), A
+    INC HL
+    DEC E
+    JR NZ, .INVERTIR
+    RET
+.CAMBIAR:
+    LD A, (HL)
+    INC HL
+    INC HL
+    LD C, (HL)
+    LD (HL), A
+    DEC HL
+    DEC HL
+    LD (HL), C
+    RET
 FIN_M2_ALTA:
     ENT
     ASSERT FIN_M2_ALTA <= TRASPUESTA
