@@ -641,3 +641,48 @@ no se ven. Menús, portada y demás pantallas siguen en SCREEN 2.
   con la matriz dibujada con las losetas del MSX1, con un tic de retraso
   (la página que se ve es la del tic anterior). 15 fases, demo, vuelta al
   menú y fin de partida probados; V9990 y MSX1 siguen igual.
+
+## 31. f2z (2026-10-26): MSX2, fase 2 (muñecos, marco y textos)
+
+Rubén dio por buena la fase 1 y pidió quitar en el MSX2 la opción 3
+(The Pepsi Challenge): en MSX2 solo hay gráficos de Mad Mix Game. Con
+GFX9000 y en MSX1 la opción sigue.
+
+- Sin Pepsi en MSX2: M2_INICIAR pone a cero el CALL que escribe la línea
+  3 del menú (PEPSI_DIBUJAR_MENU.LINEA_3) y cambia el JP Z de la tecla 3
+  por un JP (PEPSI_DESPACHAR.SALTO). La zona $7700-$7FEF de Pepsi queda
+  libre en MSX2 y la usa msx2.asm: anillo ($7700-$79FF), sumas del marco
+  ($7A00, 336 × 2 bytes), cache de muñecos ($7D00, sprite×4+reflejo →
+  hueco), variables de trabajo ($7E00) y la parte alta del código
+  ($7F00: M2_ISR y M2_TEXTO, fragmento ram_m2_7f00.bin de TABLA_M2).
+- Paleta en partida: la del TMS con el 3 y el 4 = colores 8 y 9 del TMS;
+  el 8 es el fondo del laberinto y el 9 el del recuadro del comecocos
+  (COLOR_ACTUAL). Losetas con papel 8.
+- Muñecos: V9_ACTOR_EXT → M2_ACTOR apunta hasta 10 (mismos filtros que
+  MOTOR_ACTORES). En el tic, tras la ventana, un LMMM con transparencia
+  por muñeco desde una cache de 50 huecos de 24×24 (páginas 0/1 líneas
+  192-239 y página 2 líneas 736-759), convertidos por la CPU la primera
+  vez: tinta → 1, máscara a 0 → 8, resto → 0 (transparente). Geometría
+  del motor: x = columna×2; escribe 3 bytes desde x AND $F8 con el dibujo
+  desplazado x AND 7, o con reflejo y hueco h ≠ 0 empezando (h − x) AND 7
+  a la izquierda; fila par, por arriba D − 256 si D + alto > 255, recorte
+  a la ventana. Comprobado contra el búfer del MSX1 ($DC00, 4322 píxeles)
+  y la VRAM del MSX2 contra ese modelo (4801 píxeles): sin diferencias.
+- Recuadro del comecocos: LMMV OR 1 sobre (128,80) 16×16 de la página
+  oculta: el 8 pasa a 9 y el negro sigue negro.
+- Marco: el juego sigue escribiéndolo en la copia del TMS. Cada tic se
+  repasan 48 de sus 336 celdas (y todas al cargar nivel) con una suma de
+  Fletcher de 16 bits; las que cambian se pasan a 4 bpp en las dos
+  páginas. Los puntos (filas 22-23) se pasan en cuanto se escriben
+  (V9_MARCADOR_SUCIO). M2_ISR repasa 16 celdas más en cada interrupción
+  que llega con el juego parado en un HALT (READY?, pausas), cuando no
+  hay tics. Una suma de 8 bits daba colisiones (el logo de Topo se veía
+  a medias en la fase 2): de ahí los 16 bits.
+- Textos: V9_TEXTO_EXT → M2_TEXTO pasa ya las celdas escritas (FASE,
+  READY?, ESTÁS FRITO...); en la ventana duran hasta que se compone otra
+  vez, como en el TMS. Al empezar fase se pasa antes el marco entero.
+- READY? lleva su recuadro de color en MSX2 (V9_COLOR_READY solo lo pone
+  negro con V9990).
+- Probado en openMSX (C-BIOS MSX2): 15 fases, demo, fin de partida; el
+  marco coincide celda a celda con la copia del TMS en las dos páginas.
+  MSX1 y V9990 siguen igual.

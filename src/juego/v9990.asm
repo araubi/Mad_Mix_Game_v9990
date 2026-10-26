@@ -131,6 +131,7 @@ V9_ISR:
     DEC A
     JR Z, .TMS_V9990
     POP AF
+.SALTO_TMS:                     ; con MSX2, M2_INICIAR lo cambia por JP M2_ISR
     JP ENTRADA_INTERRUPCION_VBLANK
     ; Con V9990, la ISR del TMS vuelve por .TRAS_TMS: si el V9990
     ; interrumpiera justo al volver a la instruccion de detras de un

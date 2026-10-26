@@ -45,7 +45,7 @@ TABLAS = [
                      ("ram_f010.bin", 0xF010)]),
     ("TABLA_EXT", [("ram_0100.bin", 0x0100), ("ram_0f00.bin", 0x0F00)]),
     # MSX2 sin GFX9000 (msx2.asm): encima de TABLA_EXT
-    ("TABLA_M2", [("ram_m2_0100.bin", 0x0100), ("ram_f300.bin", 0xF300)]),
+    ("TABLA_M2", [("ram_m2_0100.bin", 0x0100), ("ram_f300.bin", 0xF300), ("ram_m2_7f00.bin", 0x7F00)]),
 ]
 
 # Pantalla de carga para el TMS cuando hay GFX9000 (rom.asm, V9_LOGO_PREPARAR):

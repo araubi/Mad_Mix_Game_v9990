@@ -392,8 +392,7 @@ V9_HIPO_AMARILLO: DB 0
 V9_COLOR_READY:
     CALL OBTENER_COLOR_VDP
     LD HL, V9_PRESENTE
-    INC (HL)
-    DEC (HL)
+    BIT 0, (HL)                 ; solo con V9990 (1); el MSX2 (2), como el TMS
     RET Z
     AND $F0
     OR 1                        ; tinta: siempre 6, 8, $D, $E o $F
