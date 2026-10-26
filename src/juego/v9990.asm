@@ -68,6 +68,7 @@ V9_MODO:        DB MODO_ESPEJO
 V9_SCROLL:      DS 4            ; R#21-R#24 (SCBY0, SCBY1, SCBX0, SCBX1) pendientes
 V9_SPR_LISTOS:  DB 0            ; 1: V9_ISR copia V9_SPR_BUF a la tabla de sprites
 V9_ULTIMO_PASO: DB 0            ; CONTADOR_FRAMES del ultimo paso del espejo
+V9_HAY_EXT:     DB 0            ; 1 con V9990 o con MSX2 (msx2.asm): CARGAR_NIVEL avisa
 
 ; --------------------------------------------------------------
 ;  V9_ISR: delante de ENTRADA_INTERRUPCION_VBLANK (ACTIVAR_
@@ -86,8 +87,8 @@ V9_ULTIMO_PASO: DB 0            ; CONTADOR_FRAMES del ultimo paso del espejo
 V9_ISR:
     PUSH AF
     LD A, (V9_PRESENTE)
-    AND A
-    JR Z, .TMS
+    DEC A                       ; 1 = V9990 (2 = MSX2 en SCREEN 5: como el TMS)
+    JR NZ, .TMS
     IN A, (V9_INT_FLAG)
     RRCA                        ; bit 0 = VI, fin de pantalla
     JR NC, .TMS
@@ -127,8 +128,8 @@ V9_ISR:
     RET
 .TMS:
     LD A, (V9_PRESENTE)
-    AND A
-    JR NZ, .TMS_V9990
+    DEC A
+    JR Z, .TMS_V9990
     POP AF
     JP ENTRADA_INTERRUPCION_VBLANK
     ; Con V9990, la ISR del TMS vuelve por .TRAS_TMS: si el V9990
@@ -175,7 +176,7 @@ V9_ISR:
 ; --------------------------------------------------------------
 ; CARGAR_NIVEL: avisa del nivel nuevo y hace la instruccion sustituida.
 V9_CARGAR_NIVEL:
-    LD A, (V9_PRESENTE)
+    LD A, (V9_HAY_EXT)
     AND A
     CALL NZ, V9_CARGAR_NIVEL_EXT
     LD A, (NIVEL_ACTUAL)
@@ -211,10 +212,10 @@ V9_PORTADA:
 ; PROGRAMAR_APAGADO_PANTALLA: con el V9990 el TMS no se apaga nunca.
 V9_APAGADO:
     LD A, (V9_PRESENTE)
-    AND A
-    LD A, $A2
-    JR Z, .PONER
+    DEC A                       ; solo con V9990 (el MSX2 se apaga como el TMS)
     LD A, $E2
+    JR Z, .PONER
+    LD A, $A2
 .PONER:
     LD (VDP_REGISTRO1_PENDIENTE), A
     RET

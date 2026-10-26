@@ -39,6 +39,7 @@ FIN_MOTOR:
     INCLUDE "v9990_ext.asm"     ; ORG $0100 (RAM baja)
     INCLUDE "pepsi.asm"         ; ORG $0F00, $7700 y $7FF0
     INCLUDE "v9_portada.asm"    ; ORG $F010
+    INCLUDE "msx2.asm"          ; ORG $F300 (solo con MSX2)
     IFDEF VOLUMEN
     INCLUDE "volumen.asm"       ; ORG $0040 (ROM de prueba)
     ENDIF
@@ -57,6 +58,26 @@ FIN_MOTOR:
     SAVEBIN "../../build/ram_6500.bin", $6500, FIN_VOLCADO_HAZ-$6500
     SAVEBIN "../../build/ram_8400.bin", START, FIN_MOTOR-START
     SAVEBIN "../../build/ram_0100.bin", $0100, FIN_V9990_EXT-$0100
+    ; MSX2 (msx2.asm): la misma RAM baja con las entradas que usa la parte
+    ; residente cambiadas por saltos al codigo del MSX2
+    ORG V9_INICIAR
+    JP M2_INICIAR
+    ORG V9_PONER_MODO
+    JP M2_PONER_MODO
+    ORG V9_ACTOR_EXT
+    RET                         ; fase 1: sin munecos
+    ORG V9_CARGAR_NIVEL_EXT
+    JP M2_CARGAR_NIVEL
+    ORG V9_RELLENAR_EXT
+    JP M2_RELLENAR
+    ORG V9_TIC
+    JP M2_TIC
+    ORG V9_PASO_ESPEJO
+    RET
+    ORG V9_TEXTO_EXT
+    RET
+    SAVEBIN "../../build/ram_m2_0100.bin", $0100, FIN_V9990_EXT-$0100
+    SAVEBIN "../../build/ram_f300.bin", M2_INICIAR, FIN_MSX2-M2_INICIAR
     SAVEBIN "../../build/ram_0f00.bin", MODO_PEPSI, FIN_PEPSI-MODO_PEPSI
     SAVEBIN "../../build/ram_7700.bin", PEPSI_DELTA, FIN_PEPSI_SPR63-PEPSI_DELTA
     SAVEBIN "../../build/ram_dda1.bin", PEPSI_SUBTABLAS, FIN_PEPSI_TABLAS-PEPSI_SUBTABLAS

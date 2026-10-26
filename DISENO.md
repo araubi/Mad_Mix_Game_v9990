@@ -603,3 +603,41 @@ marco (líneas 8-195 del V9990) y ponía en negro de la 196 en adelante;
 el logo baja hasta la 191 de la maqueta y perdía sus 4 líneas de abajo.
 Ahora se copian las líneas 0-191 (V9990 8-199) y el negro empieza en la
 200. Las líneas 200-207 de la maqueta (una tira de colores) siguen fuera.
+
+## 30. f2y (2026-10-26): MSX2, fase 1 (laberinto en SCREEN 5)
+
+El mismo cartucho elige solo: GFX9000 si lo hay; si no, un MSX2 (o
+superior) con 128 KB de VRAM; si no, el MSX1 de siempre. Rubén eligió
+SCREEN 5 con los gráficos del MSX1 de momento. En la fase 1 la partida
+enseña el laberinto (color de cada fase, scroll siguiendo a la cámara,
+casillas comidas); los muñecos y el marcador son la fase 2 y por ahora
+no se ven. Menús, portada y demás pantallas siguen en SCREEN 2.
+
+- Detección (rom.asm, DETECTAR_MSX2): sin GFX9000, versión del MSX
+  ($002D) ≥ 1 y prueba de VRAM: con 64 KB, $1FFFF es la misma celda que
+  $0FFFF. Entonces el cargador copia TABLA_M2 encima de TABLA_EXT.
+- TABLA_M2 = ram_m2_0100.bin (v9990_ext.asm con sus entradas usadas por
+  la parte residente cambiadas por JP/RET a msx2.asm, ver imagen_ram.asm)
+  y ram_f300.bin (msx2.asm, $F300-$F8FF; anillo en $F900-$FBFF sin
+  cargar). Un watchpoint en openMSX confirmó que el juego no escribe en
+  $F300-$FBFF ni en partida ni en la intro y la demo.
+- V9_PRESENTE: 0 TMS, 1 V9990, 2 MSX2 en SCREEN 5. Con 0 el MSX2 hace lo
+  del MSX1. V9_ISR y V9_APAGADO miran ahora "= 1" (DEC A, mismo tamaño);
+  V9_CARGAR_NIVEL mira el byte nuevo V9_HAY_EXT (1 con V9990 o MSX2).
+- Al cargar un nivel: SCREEN 5 de 192 líneas, R#14 = 4 para que lo que el
+  juego escribe en el TMS caiga en una copia (página 2, líneas 0-127).
+  Al volver a un menú, a la portada o tras ESTÁS FRITO, la copia vuelve a
+  $0000-$3FFF por HMMM y se reponen los registros de SCREEN 2.
+- VRAM: páginas 0/1 doble búfer, losetas del MSX1 en 4 bpp en la página 2
+  (líneas 128-223, tinta color 1, papel color 2), anillo de 16×16 losetas
+  en la página 3. El color 2 de la paleta es el fondo del TMS de la fase
+  (CONSULTAR_COLOR_VDP con REGISTRO_NIVEL_ICONO_HUD), también en los
+  destellos.
+- M2_TIC (en lugar del volcado): enseña la página compuesta en el tic
+  anterior, lleva al anillo (HMMM 16×16) las celdas visibles que han
+  cambiado y copia la ventana de 192×144 del anillo a la página oculta en
+  1-4 HMMM. La CPU no espera al VDP.
+- Comprobado en openMSX (C-BIOS MSX2): la ventana coincide píxel a píxel
+  con la matriz dibujada con las losetas del MSX1, con un tic de retraso
+  (la página que se ve es la del tic anterior). 15 fases, demo, vuelta al
+  menú y fin de partida probados; V9990 y MSX1 siguen igual.

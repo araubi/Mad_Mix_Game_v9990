@@ -165,6 +165,10 @@ INICIO_ROM:
     ; --- con GFX9000: el TMS muestra la pantalla de carga y el logo va al V9990 ---
     CALL V9_LOGO_PREPARAR
 
+    ; --- sin GFX9000, un MSX2 con 128 KB de VRAM ve la partida en SCREEN 5
+    ; (msx2.asm) ---
+    CALL DETECTAR_MSX2
+
     ; --- logo de Topo Soft (version de cinta), con BIOS presente ---
     LD IX, TABLA_LOGO
     CALL COPIAR_FRAGMENTOS
@@ -180,6 +184,59 @@ INICIO_ROM:
 
     ; --- juego: a partir de aqui ya no hay BIOS ---
     JP ARRANCAR_JUEGO
+
+; --------------------------------------------------------------
+;  DETECTAR_MSX2: HAY_MSX2 = 1 si no hay GFX9000 y es un MSX2 (o
+;  superior) con 128 KB de VRAM: con 64 KB la direccion $1FFFF es la
+;  misma que $0FFFF. Antes del logo, que borra la VRAM.
+; --------------------------------------------------------------
+DETECTAR_MSX2:
+    LD A, (LOGO_EN_V9990)
+    AND A
+    RET NZ
+    LD A, ($002D)
+    AND A
+    RET Z
+    LD A, 7
+    LD BC, $5A00 + $FF
+    CALL .ESCRIBIR              ; $1FFFF = $5A
+    LD A, 3
+    LD BC, $A500 + $FF
+    CALL .ESCRIBIR              ; $0FFFF = $A5
+    LD A, 7
+    OUT ($99), A
+    LD A, 14 + $80
+    OUT ($99), A
+    LD A, $FF
+    OUT ($99), A
+    LD A, $3F
+    OUT ($99), A
+    PUSH AF
+    POP AF
+    IN A, ($98)
+    LD B, A
+    XOR A
+    OUT ($99), A
+    LD A, 14 + $80
+    OUT ($99), A
+    LD A, B
+    CP $5A
+    RET NZ
+    LD A, 1
+    LD (HAY_MSX2), A
+    RET
+; R#14 = A, direccion $3F(C) y escribe B
+.ESCRIBIR:
+    OUT ($99), A
+    LD A, 14 + $80
+    OUT ($99), A
+    LD A, C
+    OUT ($99), A
+    LD A, $7F
+    OUT ($99), A
+    LD A, B
+    OUT ($98), A
+    RET
 
 ; --------------------------------------------------------------
 ;  DETECTAR_FRECUENCIA: mide cuantas vueltas de un bucle fijo caben
@@ -652,6 +709,7 @@ SLOT_ROM:   DB 0
 SLOT_RAM:   DB 0
 TIC_DETECTADO: DB 6
 LOGO_EN_V9990: DB 0             ; 1: el logo se dibuja en el V9990
+HAY_MSX2:      DB 0             ; 1: MSX2 con 128 KB de VRAM y sin GFX9000 (msx2.asm)
 
 ; --------------------------------------------------------------
 ;  Logo de Topo en el V9990. LOGO_WRTVRM_V9 (WRTVRM del logo: A = byte,
@@ -996,6 +1054,12 @@ ARRANCAR_JUEGO:
     LDIR
     LD IX, TABLA_EXT            ; V9990 con los graficos del remake ($0100-$0FFF)
     CALL COPIAR_FRAGMENTOS
+    LD A, (HAY_MSX2)
+    AND A
+    JR Z, .SIN_MSX2
+    LD IX, TABLA_M2             ; MSX2: v9990_ext.asm con saltos a msx2.asm, y msx2.asm
+    CALL COPIAR_FRAGMENTOS
+.SIN_MSX2:
     LD A, (SLOT_RAM)
     LD B, 1
     CALL PONER_SLOT
@@ -1003,7 +1067,7 @@ ARRANCAR_JUEGO:
     ; seleccionaria un banco del mapper ASCII16 en vez de llegar a la RAM
     LD A, (TIC_DETECTADO)
     LD (TIC_FRAMES), A
-    CALL V9_INICIAR             ; si hay GFX9000: modo P1 y losetas del laberinto
+    CALL V9_INICIAR             ; si hay GFX9000: modo P1 y losetas del laberinto (MSX2: M2_INICIAR)
     JP ENTRADA_JUEGO
 
 ; --------------------------------------------------------------
