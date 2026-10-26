@@ -510,3 +510,24 @@ El nivel 14 tiene dos casillas de excavadora juntas (fila 24, columnas
 casillas de un icono de transformación (OBJETOS) llevan el dibujo más
 frecuente de ese valor en todos los mapas, no solo las que salen como
 suelo (§21).
+
+## 24. ROM de prueba «volumen» (2026-10-26)
+
+Pedida por Rubén: muñecos con volumen. `python3 tools/build.py --volumen`
+(`-DVOLUMEN`, `MADMIX_VOLUMEN=1` para graficos.py) deja
+`build/madmix_v9990_volumen.rom`; se combina con `--pasarfase`.
+
+- La paleta de sprites (32-47) está llena, así que los sombreados usan
+  la 0-15: en partida no la usa el TMS (la capa A va con la del marco).
+  `volumen.asm` (RAM baja, $0040-$00FF) la carga en V9_PONER_MODO al
+  entrar en partida y repone la del TMS al volver al espejo.
+- graficos.py `sombrear`: altura = distancia al borde de la figura (hasta
+  4 px); luz arriba a la izquierda más un degradado en diagonal; tres
+  tonos para amarillo, rosa y verde (PALETA_VOLUMEN). Rojo, grises,
+  blanco y cian quedan planos (no hay más entradas).
+- Fantasmas (27-36) y mascota de Pepsi siguen en la 32-47
+  (V9_VOL_ELEGIR). El fantasma rosa usa las entradas 6, 13 y 14 de la
+  0-15: en la paleta nueva son la sombra, el cuerpo y el blanco del rosa.
+- Con la bola de poder, la mascota de Pepsi hacia arriba sale amarilla
+  (su rojo venía de la paleta del TMS).
+- La entrada 0 es el color del borde: va en negro.

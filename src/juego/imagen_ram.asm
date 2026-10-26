@@ -39,6 +39,9 @@ FIN_MOTOR:
     INCLUDE "v9990_ext.asm"     ; ORG $0100 (RAM baja)
     INCLUDE "pepsi.asm"         ; ORG $0F00, $7700 y $7FF0
     INCLUDE "v9_portada.asm"    ; ORG $F010
+    IFDEF VOLUMEN
+    INCLUDE "volumen.asm"       ; ORG $0040 (ROM de prueba)
+    ENDIF
 
     ; Compilacion de pruebas (tools/build.py --pruebas): GENERAR_ALEATORIO
     ; usa la semilla en vez del registro R, cuyo valor depende de cuantas
@@ -59,6 +62,9 @@ FIN_MOTOR:
     SAVEBIN "../../build/ram_dda1.bin", PEPSI_SUBTABLAS, FIN_PEPSI_TABLAS-PEPSI_SUBTABLAS
     SAVEBIN "../../build/ram_7ff0.bin", V9_META_ELEGIR, FIN_TEXTOS_PEPSI-V9_META_ELEGIR
     SAVEBIN "../../build/ram_f010.bin", V9_PORTADA_ENTRAR, FIN_V9_PORTADA-V9_PORTADA_ENTRAR
+    IFDEF VOLUMEN
+    SAVEBIN "../../build/ram_0040.bin", V9_VOL_JUEGO, FIN_VOLUMEN-V9_VOL_JUEGO
+    ENDIF
 
     ; El logo se ensambla al final porque comparte direcciones con el
     ; motor ($9470); su volcado ya se hizo arriba.

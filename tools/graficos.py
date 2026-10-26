@@ -557,6 +557,64 @@ def original(mem, i, espejo):
     return pts
 
 
+# ROM de prueba con volumen en los muñecos (build.py --volumen): los
+# sprites que no son fantasmas se sombrean con luz desde arriba a la
+# izquierda y usan la paleta 0-15, que en partida no hace falta para el
+# TMS (V9_VOL_* en optimizaciones.asm la carga al entrar en partida).
+VOLUMEN = os.environ.get("MADMIX_VOLUMEN") == "1"
+AMARILLO, ROSA = (252, 252, 111), (239, 176, 241)
+VERDE, VERDE_OSCURO = (41, 217, 41), (34, 175, 34)
+# paleta 0-15 de la prueba; 1, 6, 13 y 14 son tambien el fantasma rosa
+# (el naranja con esta paleta: cuerpo, sombra y ojos); la 0 es el borde
+PALETA_VOLUMEN = [(0, 0, 0), (0, 0, 0), (255, 255, 205), AMARILLO, (205, 165, 40),
+                  ROJO, (180, 105, 190), (255, 222, 255), (150, 245, 120), VERDE,
+                  VERDE_OSCURO, (183, 183, 183), (93, 93, 93), ROSA, (255, 255, 255), CIAN]
+# color del dibujo -> (luz, medio, sombra) en PALETA_VOLUMEN
+TONOS = {(0, 0, 0): (1, 1, 1), (255, 255, 255): (14, 14, 14), ROJO: (5, 5, 5),
+         (183, 183, 183): (11, 11, 11), (93, 93, 93): (12, 12, 12), CIAN: (15, 15, 15),
+         AMARILLO: (2, 3, 4), ROSA: (7, 13, 6), VERDE: (8, 9, 10), VERDE_OSCURO: (10, 10, 10)}
+
+
+def sombrear(q, w, h, pal):
+    """Indices de un sprite (paleta pal) -> PALETA_VOLUMEN con luz y
+    sombra: altura = distancia al borde de la figura (hasta 4 px); la cara
+    que mira arriba a la izquierda va a la luz y la contraria a la sombra,
+    con un poco de degradado en diagonal por toda la figura."""
+    dentro = [[q[y * w + x] != 0 for x in range(w)] for y in range(h)]
+    INF = 99
+    d = [[INF if dentro[y][x] else 0 for x in range(w)] for y in range(h)]
+    for _ in range(5):
+        for y in range(h):
+            for x in range(w):
+                if d[y][x]:
+                    m = d[y][x]
+                    for dy in (-1, 0, 1):
+                        for dx in (-1, 0, 1):
+                            yy, xx = y + dy, x + dx
+                            v = d[yy][xx] if 0 <= yy < h and 0 <= xx < w else 0
+                            m = min(m, v + 1)
+                    d[y][x] = m
+    alt = [[min(d[y][x], 4) for x in range(w)] for y in range(h)]
+
+    def a(x, y):
+        return alt[y][x] if 0 <= y < h and 0 <= x < w else 0
+    pts = [(x, y) for y in range(h) for x in range(w) if dentro[y][x]]
+    cx = sum(x for x, _ in pts) / len(pts)
+    cy = sum(y for _, y in pts) / len(pts)
+    r = max(1.0, max(abs(x - cx) + abs(y - cy) for x, y in pts))
+    out = bytearray(len(q))
+    for x, y in pts:
+        gx = a(x + 1, y) - a(x - 1, y)
+        gy = a(x, y + 1) - a(x, y - 1)
+        luz = (gx + gy) / 4 - ((x - cx) + (y - cy)) / r * 0.8
+        tono = 0 if luz > 0.4 else 2 if luz < -0.35 else 1
+        c = pal[q[y * w + x]]
+        if c not in TONOS:
+            sys.exit(f"ERROR: color {c} sin tonos para el volumen")
+        out[y * w + x] = TONOS[c][tono]
+    return bytes(out)
+
+
 def sprites(mem):
     sp = rgb(Image.open(ruta("or fase 1.png")))
     c = Counter()
@@ -619,6 +677,8 @@ def sprites(mem):
             q = bytes(15 if v == 9 else v for v in q)     # el rosa va al 15
             if reflejar:
                 q = bytes(q[j * w + w - 1 - k] for j in range(h) for k in range(w))
+            if VOLUMEN and not 27 <= i <= 36:
+                q = sombrear(q, w, h, pal)
             pts = [(k, j) for j in range(h) for k in range(w) if q[j * w + k]]
             if not pts:
                 meta[(i, espejo)] = []
@@ -832,6 +892,11 @@ def main():
     db("V9_PALETA_MARCO", b"".join(c5(c) for c in pal_marco))
     db("V9_TMS_A_MARCO", bytes(tms_a))
     db("V9_PALETA_SPRITES", b"".join(c5(c) for c in pal_spr))
+    paleta_vol = b"".join(c5(c) for c in PALETA_VOLUMEN)
+    open(os.path.join(BUILD, "v9_volumen.inc"), "w").write(
+        "; generado por tools/graficos.py -- no editar\nV9_PALETA_VOLUMEN:\n"
+        + "".join("    DB " + ", ".join(str(b) for b in paleta_vol[k:k + 16]) + "\n"
+                  for k in range(0, 48, 16)))
     # tabla de sprites: 128 punteros (sprite*2 + espejo) a listas de
     # partes: n, y n veces (dx, dy, patron); el 64 (rojo hacia arriba) va
     # en v9_pepsi.inc, que no cabe aqui

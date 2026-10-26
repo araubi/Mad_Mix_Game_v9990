@@ -259,7 +259,11 @@ V9_META_ELEGIR:
     ADD HL, DE
     RET
 .NO_FANTASMA:
+    IFDEF VOLUMEN
+    CALL V9_VOL_ELEGIR          ; volumen.asm: paleta 0-15 si va sombreado
+    ELSE
     CALL V9_PAC_AMARILLO        ; LD DE,V9_META (y el parpadeo, v9_portada.asm)
+    ENDIF
     LD A, (MODO_PEPSI)
     AND A
     JR NZ, .PEPSI_MODO
@@ -290,7 +294,11 @@ V9_META_ELEGIR:
     CP 63 * 2
     JR C, .PEPSI_MAPA
 .PEPSI_ROJA:
+    IFDEF VOLUMEN
+    LD A, $A0                   ; la 0-15 ya no es la del TMS: se queda amarilla
+    ELSE
     LD A, $20
+    ENDIF
     LD (V9_PREPARAR_SPRITES.ATRIB + 1), A
 .PEPSI_MAPA:
     LD A, L

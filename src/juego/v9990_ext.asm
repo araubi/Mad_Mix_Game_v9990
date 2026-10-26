@@ -254,7 +254,11 @@ V9_PONER_MODO:
     ; --- espejo: paleta del TMS, sprites apagados, todas las filas por copiar ---
     LD B, 13
     LD A, $04
+    IFDEF VOLUMEN
+    CALL V9_VOL_ESPEJO          ; volumen.asm: repone la paleta 0-15 del TMS
+    ELSE
     CALL V9_ESCRIBIR_REG
+    ENDIF
     LD B, 8
     LD A, $C2
     CALL V9_ESCRIBIR_REG
@@ -277,7 +281,11 @@ V9_PONER_MODO:
     LD A, 48
     LD C, 16
     LD HL, V9_PALETA_MARCO
+    IFDEF VOLUMEN
+    CALL V9_VOL_JUEGO           ; volumen.asm: tambien la paleta 0-15 de los sprites sombreados
+    ELSE
     CALL V9_CARGAR_PALETA
+    ENDIF
     LD B, 13
     LD A, $07
     CALL V9_ESCRIBIR_REG

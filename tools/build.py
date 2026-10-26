@@ -17,11 +17,13 @@ build.py -- Mad Mix Game v9990: compila la ROM completa.
   4. src/rom/rom.asm -> build/madmix_v9990.rom (ASCII16), rellenada a
      potencia de 2.
 
-Uso: python3 tools/build.py [--pruebas] [--pasarfase]   (requiere sjasmplus en el PATH)
+Uso: python3 tools/build.py [--pruebas] [--pasarfase] [--volumen]   (requiere sjasmplus en el PATH)
      --pruebas: ROM con aleatoriedad determinista (ver imagen_ram.asm),
                 build/madmix_v9990_pruebas.rom
      --pasarfase: ROM de pruebas en la que F1 da la fase por completada,
                 build/madmix_v9990_pasarfase.rom
+     --volumen: ROM de prueba con los munecos sombreados (volumen.asm),
+                build/madmix_v9990_volumen.rom
 """
 import os
 import shutil
@@ -65,6 +67,10 @@ V9_META:           DS 256
 
 PRUEBAS = "--pruebas" in sys.argv
 PASAR_FASE = "--pasarfase" in sys.argv
+VOLUMEN = "--volumen" in sys.argv
+if VOLUMEN:
+    os.environ["MADMIX_VOLUMEN"] = "1"       # tools/graficos.py
+    TABLAS[2][1].append(("ram_0040.bin", 0x0040))
 
 
 def sjasmplus(cwd, fuente):
@@ -72,6 +78,8 @@ def sjasmplus(cwd, fuente):
     extra = ["-DPRUEBAS"] if PRUEBAS else []
     if PASAR_FASE:
         extra.append("-DPASAR_FASE")
+    if VOLUMEN:
+        extra.append("-DVOLUMEN")
     r = subprocess.run([exe, "--nologo", "--msg=war"] + extra + [fuente], cwd=cwd)
     if r.returncode:
         sys.exit(f"ERROR: sjasmplus fallo en {fuente}")
@@ -82,7 +90,7 @@ def main():
     datos = os.path.join(BUILD, "v9_datos.inc")
     if not os.path.exists(datos):
         open(datos, "w").write(DATOS_VACIOS)
-    for f, vacio in (("v9_portada.lz", b"\0"), ("pepsi_delta.bin", b"\0\0"), ("pepsi_subtablas.bin", b"\0\0"),
+    for f, vacio in (("v9_volumen.inc", "V9_PALETA_VOLUMEN: DS 48\n"), ("v9_portada.lz", b"\0"), ("pepsi_delta.bin", b"\0\0"), ("pepsi_subtablas.bin", b"\0\0"),
                      ("pepsi_indicadores.bin", b"\0\0"), ("v9_pepsi.inc", "V9_META_PEPSI: DS 72\nV9_META_ROJO_ARRIBA: DS 13\nV9_META_F_ROJO: DS 72\nV9_META_F_NARANJA: DS 72\n")):
         if not os.path.exists(os.path.join(BUILD, f)):
             open(os.path.join(BUILD, f), "wb" if isinstance(vacio, bytes) else "w").write(vacio)
@@ -165,6 +173,8 @@ def main():
         os.replace(rom_path, rom_path := rom_path.replace(".rom", "_pruebas.rom"))
     if PASAR_FASE:
         os.replace(rom_path, rom_path := rom_path.replace(".rom", "_pasarfase.rom"))
+    if VOLUMEN:
+        os.replace(rom_path, rom_path := rom_path.replace(".rom", "_volumen.rom"))
     open(rom_path, "wb").write(rom)
     print(f"ROM: {rom_path} ({len(rom) // 1024} KB, ASCII16, {len(rom) // BANCO} bancos;"
           f" carga util {len(carga)} bytes)")
