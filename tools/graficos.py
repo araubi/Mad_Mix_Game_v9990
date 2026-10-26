@@ -551,8 +551,12 @@ EXCAVADORA = {14: (368, 48, 16, 16), 15: (352, 48, 16, 16)}
 # pone los items (TABLA_ITEMS_*) 4 px a la izquierda que el comecocos, y
 # el aplastacocos vertical (48-53) quedaba torcido hacia la pared
 # izquierda del pasillo (Ruben, f2u); el horizontal (45-47) va igual
-# para que no salte al girar.
-AJUSTE = {i: (2, 0) for i in range(45, 54)}
+# para que no salte al girar. Tanque (23) reflejado (f2v): el TMS
+# refleja la caja entera de 24 (hueco 0) y el cuerpo saltaba 4 px a la
+# derecha al mirar a la izquierda; se deja donde mirando a la derecha.
+# Claves (sprite, espejo).
+AJUSTE = {(i, e): (2, 0) for i in range(45, 54) for e in (0, 1)}
+AJUSTE[(23, 1)] = (-4, 0)
 
 # Hacia arriba y hacia abajo no hay izquierda ni derecha: el juego no usa
 # reflejados los sprites de esas direcciones (comecocos, excavadora e
@@ -714,7 +718,8 @@ def sprites(mem):
             ox, oy = caja(original(mem, 6 if i == 64 else i, espejo))
             rx, ry = caja(pts)
             dx, dy = round(ox - rx), round(oy - ry)
-            dx, dy = dx + AJUSTE.get(i, (0, 0))[0], dy + AJUSTE.get(i, (0, 0))[1]
+            ax, ay = AJUSTE.get((i, espejo), (0, 0))
+            dx, dy = dx + ax, dy + ay
             partes = []
             for py in range(0, h, 16):
                 for px in range(0, w, 16):

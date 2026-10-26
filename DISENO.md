@@ -558,3 +558,13 @@ graficos.py tiene ahora AJUSTE (dx, dy por sprite, sumado al centrado):
 +2 px a los sprites 45-53 (los verticales 48-53 y, para que no salte al
 girar, también los horizontales 45-47). Comprobado con capturas en el
 nivel 6 a la misma posición del actor (X=76) antes y después.
+
+## 27. f2v (2026-10-26): tanque mirando a la izquierda
+
+Rubén: el tanque (sprite 23) mirando a la izquierda iba demasiado a la
+derecha. En el original el sprite tiene hueco 0, así que el TMS refleja
+la caja entera de 24 px; como el cañón sobresale por la derecha, al
+reflejarlo el cuerpo se desplaza 4 px a la derecha. El V9990 copiaba
+ese salto. AJUSTE pasa a tener claves (sprite, espejo) y el (23, 1)
+lleva -4 px: el cuerpo queda en las mismas columnas (2-17) mirando a
+cualquier lado y solo cambia de lado el cañón.
