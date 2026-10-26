@@ -686,3 +686,31 @@ GFX9000 y en MSX1 la opción sigue.
 - Probado en openMSX (C-BIOS MSX2): 15 fases, demo, fin de partida; el
   marco coincide celda a celda con la copia del TMS en las dos páginas.
   MSX1 y V9990 siguen igual.
+
+## 32. f30 (2026-10-26): MSX2 a la velocidad del MSX1
+
+Rubén vio la f2z muy lenta. Medido en openMSX (demo, C-BIOS MSX2): cada tic
+duraba 282 ms frente a 107 ms en MSX1; el juego solo gastaba ~38 ms y la
+composición ~232 ms. Causas y arreglos:
+
+- Repaso del marco: al saltar a M2_MARCO, B llevaba basura y se repasaban
+  ~219 celdas por tic en vez de 48 (ahora 16). Arreglado con LD B,A.
+- Esperas al VDP: la CPU esperaba a que acabase cada trozo de la ventana.
+  Ahora los trozos van a una cola (M2_COLA, $7900, 4×15 bytes) que se
+  sirve sin esperar desde M2_ISR en cada interrupción y entre celda y
+  celda del repaso del marco. M2_VDP_CMD vacía la cola antes de mandar
+  otra orden.
+- Muñecos en cadena: los actores del tic N se apuntan en una lista y se
+  pintan al empezar el tic N+1 sobre la página cuya ventana se copió en
+  el tic N; luego el recuadro, la espera y el cambio de página. Si un
+  actor es idéntico a otro posterior, se pinta una vez.
+- Anillo: M2_FILA_ANILLO nueva, con tablas VALOR ($7700) y CLAVE ($7800)
+  por hueco (clave = fila AND $F0 OR bit 4 de la columna) para copiar
+  solo las losetas que cambian.
+- Mapa de memoria MSX2: cola y tablas de caché en $7900-$79CE, variables
+  en $7E00-$7E78, código alto (ram_m2_alta.bin) en $7E80-$7FC0.
+- Resultado: tic de 107,1 ms (MSX1 106,7). M2_TIC: anillo 10 ms, muñecos
+  y cambio 20 ms, marco 11 ms, espera al VDP 13 ms.
+- Comprobado: huecos del anillo = losetas (12 tics, 0 fallos), muñecos =
+  modelo (5584 píxeles, 0 fallos), marco igual en las dos páginas, 15
+  fases, demo, fin de partida y vuelta al menú. MSX1 y V9990 igual.

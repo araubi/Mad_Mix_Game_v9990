@@ -128,6 +128,8 @@ M2_INICIAR:
     LD (HL), A
     LD A, $C3                   ; JP
     LD (PEPSI_DESPACHAR.SALTO), A
+    XOR A
+    LD (M2_COLA_N), A           ; la zona de Pepsi trae datos
     LD HL, M2_ISR
     LD (V9_ISR.SALTO_TMS + 1), HL
     LD A, 2
@@ -181,6 +183,7 @@ M2_CARGAR_NIVEL:
     XOR A
     LD (M2_NEGRO), A
     LD (M2_N_ACT), A
+    LD (M2_COMPUESTA), A        ; la pagina oculta es del nivel anterior
     INC A
     LD (M2_NUEVO), A
     LD (M2_MARCO_PENDIENTE), A
@@ -367,10 +370,18 @@ M2_TIC:
     LD (M2_N_ACT), A
     RET
 .COMPONER:
-    CALL M2_ESPERAR_CE
     LD A, (M2_COMPUESTA)
     AND A
-    JR Z, .COLOR
+    JR Z, .LISTA
+    ; --- la pagina oculta ya tiene la ventana del tic anterior (el
+    ; VDP la ha copiado mientras seguia el juego): sus munecos y el
+    ; recuadro del comecocos, y se ensena ---
+    CALL M2_ACTORES
+    LD A, (M2_OCULTA)
+    LD (M2_CMD_CUADRO + 7), A
+    LD HL, M2_CMD_CUADRO
+    CALL M2_VDP_CMD
+    CALL M2_ESPERAR_CE
     LD A, (M2_OCULTA)
     LD C, A
     RRCA
@@ -385,7 +396,17 @@ M2_TIC:
     LD A, C
     XOR 1
     LD (M2_OCULTA), A
-.COLOR:
+.LISTA:
+    ; --- los munecos de este tic se dibujan en el siguiente, sobre la
+    ; ventana que se copia ahora ---
+    LD HL, M2_LISTA
+    LD DE, M2_LISTA2
+    LD BC, 4 * 10
+    LDIR
+    LD HL, M2_N_ACT
+    LD A, (HL)
+    LD (HL), 0
+    LD (M2_N2), A
     LD HL, M2_TICNUM
     INC (HL)
     ; --- color del laberinto (el fondo del TMS) en el color 8 y el
@@ -401,7 +422,7 @@ M2_TIC:
     LD B, 9
     CALL M2_UN_COLOR
     ; --- nivel recien cargado: el anillo y la cache no valen ---
-    LD B, 48                    ; celdas del marco que se repasan
+    LD B, 16                    ; celdas del marco que se repasan
     LD A, (M2_NUEVO)
     AND A
     JR Z, .ESQUINA
@@ -446,31 +467,14 @@ M2_TIC:
     LD B, 10
 .FILA:
     PUSH BC
-    LD A, (M2_C0)
-    LD (M2_C), A
-    LD B, 13
-.CELDA:
-    PUSH BC
-    CALL M2_CELDA
-    LD HL, M2_C
-    LD A, (HL)
-    INC A
-    AND 31
-    LD (HL), A
-    POP BC
-    DJNZ .CELDA
+    CALL M2_FILA_ANILLO
     LD HL, M2_F
     INC (HL)
     POP BC
     DJNZ .FILA
-    ; --- la ventana del anillo a la pagina oculta ---
+    ; --- la ventana del anillo a la pagina oculta (el ultimo trozo
+    ; se queda copiando mientras sigue el juego) ---
     CALL M2_VENTANA
-    ; --- los munecos encima, y el recuadro del comecocos ---
-    CALL M2_ACTORES
-    LD A, (M2_OCULTA)
-    LD (M2_CMD_CUADRO + 7), A
-    LD HL, M2_CMD_CUADRO
-    CALL M2_VDP_CMD
     LD A, 1
     LD (M2_COMPUESTA), A
     ; --- el marco: los puntos recien escritos y un trozo del resto ---
@@ -479,6 +483,7 @@ M2_TIC:
     AND A
     CALL NZ, M2_PUNTOS
     LD A, (M2_REPASO)
+    LD B, A
     AND A
     JP NZ, M2_MARCO
     ; sigue en M2_MARCO_ENTERO
@@ -494,30 +499,6 @@ M2_MARCO_ENTERO:
     CALL M2_MARCO
     POP BC
     DJNZ .TODO
-    RET
-
-; A = byte de color del TMS (papel en el nibble bajo), B = color del
-; V9938 que lo imita, HL -> el que tiene ahora
-M2_UN_COLOR:
-    AND $0F
-    CP (HL)
-    RET Z
-    LD (HL), A
-    ADD A, A
-    LD E, A
-    LD D, 0
-    LD HL, M2_PALETA_TMS
-    ADD HL, DE
-    DI
-    LD A, B
-    LD B, 16
-    CALL M2_REG
-    LD A, (HL)
-    OUT ($9A), A
-    INC HL
-    LD A, (HL)
-    OUT ($9A), A
-    EI
     RET
 
 ; --------------------------------------------------------------
@@ -570,18 +551,43 @@ M2_ACTOR:
     POP HL
     RET
 
-; Los munecos apuntados, en orden (el ultimo queda encima)
+; Los munecos del tic anterior, en orden (el ultimo queda encima). Si
+; uno se repite igual mas adelante, solo se dibuja alli: queda lo mismo.
 M2_ACTORES:
-    LD A, (M2_N_ACT)
+    LD A, (M2_N2)
     AND A
     RET Z
     LD B, A
-    XOR A
-    LD (M2_N_ACT), A
-    LD IX, M2_LISTA
+    LD IX, M2_LISTA2
 .ACTOR:
     PUSH BC
+    DEC B
+    JR Z, .DIBUJAR
+    PUSH IX
+    POP HL
+.MIRAR:
+    LD DE, 4
+    ADD HL, DE
+    PUSH HL
+    PUSH IX
+    POP DE
+    LD C, 4
+.BYTE:
+    LD A, (DE)
+    CP (HL)
+    JR NZ, .DISTINTO
+    INC DE
+    INC HL
+    DEC C
+    JR NZ, .BYTE
+    POP HL
+    JR .SALTAR
+.DISTINTO:
+    POP HL
+    DJNZ .MIRAR
+.DIBUJAR:
     CALL M2_UN_ACTOR
+.SALTAR:
     POP BC
     LD DE, 4
     ADD IX, DE
@@ -1046,37 +1052,12 @@ M2_MARCO:
     LD (HL), B
     CALL M2_PINTAR
 .IGUAL:
+    DI
+    CALL M2_COLA_SERVIR
+    EI
     POP BC
     DJNZ M2_MARCO
     RET
-
-; Los puntos (filas 22-23, columnas 22-27) en cuanto se escriben
-M2_PUNTOS:
-    LD (HL), 0
-    LD DE, 22 * 256 + 22
-.CELDA:
-    PUSH DE
-    CALL M2_FORZAR
-    POP DE
-    INC E
-    LD A, E
-    CP 28
-    JR C, .CELDA
-    LD E, 22
-    INC D
-    LD A, D
-    CP 24
-    JR C, .CELDA
-    RET
-
-; D = fila, E = columna: la celda a las dos paginas tal como este
-M2_FORZAR:
-    CALL M2_LEER
-    CALL M2_SUMA
-    LD (HL), C
-    INC HL
-    LD (HL), B
-    JP M2_PINTAR
 
 ; D = fila, E = columna -> HL -> sus 2 bytes de suma en M2_SUMAS: las
 ; filas 0-1 y 20-23 enteras (celdas 0-191) y las columnas 0-3 y 28-31
@@ -1287,17 +1268,38 @@ M2_MAPA:
     POP HL
     RET
 
-; M2_CELDA: la celda (M2_F, M2_C) al anillo si no esta ya.
-M2_CELDA:
+; M2_FILA_ANILLO: la fila M2_F, columnas M2_C0 a M2_C0 + 12 (mod 32),
+; al anillo. Cada hueco recuerda la loseta (M2_ANILLO_VALOR) y una
+; clave de la celda (M2_ANILLO_FILA: fila AND $F0, mas 8 si la columna
+; es 16-31); si no coinciden, la loseta se copia al hueco.
+M2_FILA_ANILLO:
     LD A, (M2_F)
     LD D, A
-    LD A, (M2_C)
+    ADD A, A
+    ADD A, A
+    ADD A, A
+    ADD A, A
+    LD C, A                     ; (fila AND 15) * 16
+    LD A, D
+    AND $F0
     LD E, A
     LD A, D
+    LD D, E                     ; D = fila AND $F0
     CP FILAS_MATRIZ
-    LD A, M2_LOSETA_NEGRA
-    JR NC, .VALOR
-    LD L, D
+    JR C, .MATRIZ
+    LD HL, M2_CELDA32           ; fuera de la matriz: losetas negras
+    LD (HL), M2_LOSETA_NEGRA
+    PUSH DE
+    PUSH BC
+    LD DE, M2_CELDA32 + 1
+    LD BC, 31
+    LDIR
+    POP BC
+    POP DE
+    LD HL, M2_CELDA32
+    JR .PUNTERO
+.MATRIZ:
+    LD L, A
     LD H, 0
     ADD HL, HL
     ADD HL, HL
@@ -1305,74 +1307,79 @@ M2_CELDA:
     ADD HL, HL
     ADD HL, HL
     LD A, L
-    OR E
+    ADD A, LOW MATRIZ_NIVEL
     LD L, A
-    LD BC, MATRIZ_NIVEL
-    ADD HL, BC
+    LD A, H
+    ADC A, HIGH MATRIZ_NIVEL
+    LD H, A
+.PUNTERO:
+    LD A, (M2_C0)
+    AND 31
+    LD E, A                     ; columna
+    ADD A, L
+    LD L, A
+    ADC A, H
+    SUB L
+    LD H, A
+    LD B, 13
+.CELDA:
     LD A, (HL)
     AND $7F                     ; bit 7 = comida
-.VALOR:
-    LD C, A                     ; loseta
-    LD A, D
-    RLCA
-    RLCA
-    RLCA
-    RLCA
-    AND $F0
-    LD B, A
+    EX AF, AF'                  ; A' = loseta
+    PUSH HL
     LD A, E
-    AND $0F
-    OR B
-    LD L, A                     ; hueco del anillo
-    LD H, HIGH M2_ANILLO_VALOR
-    LD A, (HL)
-    CP C
+    AND 15
+    OR C
+    LD L, A                     ; hueco
+    LD H, HIGH M2_ANILLO_FILA
+    LD A, E
+    AND $10
+    RRCA
+    OR D                        ; clave de la celda
+    CP (HL)
     JR NZ, .CAMBIA
-    INC H                       ; M2_ANILLO_FILA
-    LD A, (HL)
-    CP D
-    JR NZ, .CAMBIA_FILA
-    INC H                       ; M2_ANILLO_COLUMNA
-    LD A, (HL)
-    CP E
-    RET Z
-    JR .CAMBIA_COLUMNA
+    DEC H
+    EX AF, AF'
+    CP (HL)
+    JR Z, .IGUAL
+    EX AF, AF'
+    INC H
 .CAMBIA:
-    LD (HL), C
-    INC H
-.CAMBIA_FILA:
-    LD (HL), D
-    INC H
-.CAMBIA_COLUMNA:
-    LD (HL), E
-    ; HMMM: loseta C (pagina 2) -> hueco (pagina 3)
-    LD A, C
-    RLCA
-    RLCA
-    RLCA
-    RLCA
-    AND $F0
-    LD (M2_CMD_LOSETA + 0), A   ; SX
-    LD A, C
-    AND $F0
-    ADD A, M2_Y_LOSETAS & $FF
-    LD (M2_CMD_LOSETA + 2), A   ; SY (+512)
+    LD (HL), A
+    DEC H
+    EX AF, AF'
+    LD (HL), A
+    CALL M2_COPIAR_LOSETA
+.IGUAL:
+    POP HL
+    INC HL
+    INC E
+    LD A, E
+    CP 32
+    JR C, .SIGUE
+    LD E, 0
     LD A, L
-    RLCA
-    RLCA
-    RLCA
-    RLCA
-    AND $F0
-    LD (M2_CMD_LOSETA + 4), A   ; DX
-    LD A, L
-    AND $F0
-    LD (M2_CMD_LOSETA + 6), A   ; DY (+768)
-    LD HL, M2_CMD_LOSETA
-    JP M2_VDP_CMD
+    SUB 32
+    LD L, A
+    JR NC, .SIGUE
+    DEC H
+.SIGUE:
+    DJNZ .CELDA
+    RET
 
 ; M2_VENTANA: 192 x 144 del anillo desde (M2_SX, M2_SY) a la ventana
 ; de la pagina oculta, en 1-4 trozos segun corte por los bordes.
 M2_VENTANA:
+    CALL M2_COLA_VACIAR
+    LD HL, M2_COLA
+    LD (M2_COLA_SIG), HL
+    LD (M2_COLA_FIN), HL
+    CALL .X_TODO
+    DI
+    CALL M2_COLA_SERVIR         ; el primer trozo ya; el resto, la ISR
+    EI
+    RET
+.X_TODO:
     LD A, (M2_OCULTA)
     LD (M2_CMD_VENTANA + 7), A  ; DY alto = pagina
     LD A, (M2_SX)
@@ -1435,7 +1442,7 @@ M2_VENTANA:
     PUSH BC
     PUSH DE
     LD HL, M2_CMD_VENTANA
-    CALL M2_VDP_CMD
+    CALL M2_ENCOLAR
     POP DE
     POP BC
     LD A, C
@@ -1455,6 +1462,7 @@ M2_VENTANA:
 ;  comando anterior.
 ; --------------------------------------------------------------
 M2_VDP_CMD:
+    CALL M2_COLA_VACIAR
     CALL M2_ESPERAR_CE
     DI
     LD A, 32
@@ -1574,14 +1582,21 @@ FIN_MSX2:
 ; sprite y reflejo ($FF: no esta).
 M2_ANILLO_VALOR   EQU $7700
 M2_ANILLO_FILA    EQU $7800
-M2_ANILLO_COLUMNA EQU $7900
+M2_COLA           EQU $7900     ; 4 comandos de 15 bytes
+M2_COLA_N         EQU M2_COLA + 60
+M2_COLA_SIG       EQU M2_COLA_N + 1
+M2_COLA_FIN       EQU M2_COLA_SIG + 2
+M2_HUECO_CLAVE    EQU M2_COLA_FIN + 2         ; clave del dibujo de cada hueco
+M2_HUECO_USO      EQU M2_HUECO_CLAVE + M2_N_HUECOS ; tic en que se uso
+M2_LISTA2         EQU M2_HUECO_USO + M2_N_HUECOS   ; munecos del tic anterior
+M2_N2             EQU M2_LISTA2 + 4 * 10
+FIN_M2_7900       EQU M2_N2 + 1
+    ASSERT FIN_M2_7900 <= M2_SUMAS
 M2_SUMAS          EQU $7A00     ; 336 x 2 bytes
 M2_CACHE_SLOT     EQU $7D00
 ; Variables de trabajo (no se cargan; tambien de The Pepsi Challenge)
 M2_LISTA          EQU $7E00     ; 10 munecos: sprite, columna, fila, indicadores
-M2_HUECO_CLAVE    EQU M2_LISTA + 4 * 10       ; clave del dibujo de cada hueco
-M2_HUECO_USO      EQU M2_HUECO_CLAVE + M2_N_HUECOS ; tic en que se uso
-M2_CV_M           EQU M2_HUECO_USO + M2_N_HUECOS   ; fila del sprite
+M2_CV_M           EQU M2_LISTA + 4 * 10       ; fila del sprite
 M2_CV_SALIDA      EQU M2_CV_M + 6                  ; y a 4 bpp
 M2_CELDA16        EQU M2_CV_SALIDA + 12            ; patron y color de una celda
 M2_CELDA32        EQU M2_CELDA16 + 16              ; y a 4 bpp
@@ -1607,7 +1622,7 @@ FIN_M2_TRABAJO    EQU M2_TX_COLUMNA + 1
 ; --------------------------------------------------------------
     ORG $FC00
 M2_ALTA_ORIGEN:
-    DISP $7F00
+    DISP $7E80
 M2_ALTA:
 
 ; --------------------------------------------------------------
@@ -1620,9 +1635,19 @@ M2_ISR:
     PUSH AF
     LD A, (V9_PRESENTE)
     CP 2
-    JR NZ, .JUEGO
+    JR Z, .MSX2
+    POP AF
+    JP ENTRADA_INTERRUPCION_VBLANK
+.MSX2:
+    POP AF
+    CALL ENTRADA_INTERRUPCION_VBLANK
+    PUSH AF
+    PUSH BC
+    PUSH DE
     PUSH HL
-    LD HL, 4
+    DI
+    CALL M2_COLA_SERVIR         ; siguiente trozo de la ventana
+    LD HL, 10
     ADD HL, SP
     LD A, (HL)
     INC HL
@@ -1630,26 +1655,75 @@ M2_ISR:
     LD L, A
     DEC HL
     LD A, (HL)                  ; la instruccion de antes de la vuelta
-    POP HL
     CP $76                      ; HALT
-    JR Z, .HALT
-.JUEGO:
-    POP AF
-    JP ENTRADA_INTERRUPCION_VBLANK
-.HALT:
-    POP AF
-    CALL ENTRADA_INTERRUPCION_VBLANK
-    PUSH AF
-    PUSH BC
-    PUSH DE
-    PUSH HL
     LD B, 16
-    CALL M2_MARCO
+    CALL Z, M2_MARCO
     POP HL
     POP DE
     POP BC
     POP AF
+    EI
     RET
+
+; --------------------------------------------------------------
+;  Cola de comandos del VDP (los trozos de la ventana): se van
+;  lanzando sin esperar desde la ISR y el repaso del marco; cualquier
+;  otro comando (M2_VDP_CMD) acaba antes la cola.
+; --------------------------------------------------------------
+; HL -> 15 bytes para R#32-R#46: a la cola
+M2_ENCOLAR:
+    LD DE, (M2_COLA_FIN)
+    LD BC, 15
+    LDIR
+    LD (M2_COLA_FIN), DE
+    LD HL, M2_COLA_N
+    INC (HL)
+    RET
+
+; Con interrupciones cerradas: si hay algo en la cola y el VDP esta
+; libre, lanza el siguiente. Conserva todo menos AF.
+M2_COLA_SERVIR:
+    LD A, (M2_COLA_N)
+    AND A
+    RET Z
+    PUSH BC
+    PUSH HL
+    LD A, 2
+    OUT ($99), A
+    LD A, 15 + $80
+    OUT ($99), A
+    IN A, ($99)
+    LD B, A
+    XOR A
+    OUT ($99), A
+    LD A, 15 + $80
+    OUT ($99), A
+    BIT 0, B
+    JR NZ, .OCUPADO
+    LD A, 32
+    OUT ($99), A
+    LD A, 17 + $80
+    OUT ($99), A
+    LD HL, (M2_COLA_SIG)
+    LD BC, 15 * 256 + $9B
+    OTIR
+    LD (M2_COLA_SIG), HL
+    LD HL, M2_COLA_N
+    DEC (HL)
+.OCUPADO:
+    POP HL
+    POP BC
+    RET
+
+; Lanza todo lo que quede en la cola (el ultimo puede seguir en marcha)
+M2_COLA_VACIAR:
+    LD A, (M2_COLA_N)
+    AND A
+    RET Z
+    DI
+    CALL M2_COLA_SERVIR
+    EI
+    JR M2_COLA_VACIAR
 
 ; --------------------------------------------------------------
 ;  M2_TEXTO (V9_TEXTO_EXT): despues de DIBUJAR_TEXTO_VRAM, con HL =
@@ -1711,6 +1785,90 @@ M2_TEXTO:
     INC (HL)
 .SIGUE:
     DJNZ .ENTRADA
+    RET
+
+; Los puntos (filas 22-23, columnas 22-27) en cuanto se escriben
+M2_PUNTOS:
+    LD (HL), 0
+    LD DE, 22 * 256 + 22
+.CELDA:
+    PUSH DE
+    CALL M2_FORZAR
+    POP DE
+    INC E
+    LD A, E
+    CP 28
+    JR C, .CELDA
+    LD E, 22
+    INC D
+    LD A, D
+    CP 24
+    JR C, .CELDA
+    RET
+
+; D = fila, E = columna: la celda a las dos paginas tal como este
+M2_FORZAR:
+    CALL M2_LEER
+    CALL M2_SUMA
+    LD (HL), C
+    INC HL
+    LD (HL), B
+    JP M2_PINTAR
+
+; A = loseta, L = hueco: HMMM de la loseta (pagina 2) al hueco
+; (pagina 3). Conserva BC y DE.
+M2_COPIAR_LOSETA:
+    PUSH BC
+    PUSH DE
+    LD C, A
+    RLCA
+    RLCA
+    RLCA
+    RLCA
+    AND $F0
+    LD (M2_CMD_LOSETA + 0), A   ; SX
+    LD A, C
+    AND $F0
+    ADD A, M2_Y_LOSETAS & $FF
+    LD (M2_CMD_LOSETA + 2), A   ; SY (+512)
+    LD A, L
+    RLCA
+    RLCA
+    RLCA
+    RLCA
+    AND $F0
+    LD (M2_CMD_LOSETA + 4), A   ; DX
+    LD A, L
+    AND $F0
+    LD (M2_CMD_LOSETA + 6), A   ; DY (+768)
+    LD HL, M2_CMD_LOSETA
+    CALL M2_VDP_CMD
+    POP DE
+    POP BC
+    RET
+
+; A = byte de color del TMS (papel en el nibble bajo), B = color del
+; V9938 que lo imita, HL -> el que tiene ahora
+M2_UN_COLOR:
+    AND $0F
+    CP (HL)
+    RET Z
+    LD (HL), A
+    ADD A, A
+    LD E, A
+    LD D, 0
+    LD HL, M2_PALETA_TMS
+    ADD HL, DE
+    DI
+    LD A, B
+    LD B, 16
+    CALL M2_REG
+    LD A, (HL)
+    OUT ($9A), A
+    INC HL
+    LD A, (HL)
+    OUT ($9A), A
+    EI
     RET
 
 FIN_M2_ALTA:

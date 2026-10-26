@@ -78,7 +78,7 @@ FIN_MOTOR:
     JP M2_TEXTO
     SAVEBIN "../../build/ram_m2_0100.bin", $0100, FIN_V9990_EXT-$0100
     SAVEBIN "../../build/ram_f300.bin", M2_INICIAR, FIN_MSX2-M2_INICIAR
-    SAVEBIN "../../build/ram_m2_7f00.bin", M2_ALTA_ORIGEN, FIN_M2_ALTA-M2_ALTA
+    SAVEBIN "../../build/ram_m2_alta.bin", M2_ALTA_ORIGEN, FIN_M2_ALTA-M2_ALTA
     SAVEBIN "../../build/ram_0f00.bin", MODO_PEPSI, FIN_PEPSI-MODO_PEPSI
     SAVEBIN "../../build/ram_7700.bin", PEPSI_DELTA, FIN_PEPSI_SPR63-PEPSI_DELTA
     SAVEBIN "../../build/ram_dda1.bin", PEPSI_SUBTABLAS, FIN_PEPSI_TABLAS-PEPSI_SUBTABLAS
