@@ -68,7 +68,7 @@ V9_MODO:        DB MODO_ESPEJO
 V9_SCROLL:      DS 4            ; R#21-R#24 (SCBY0, SCBY1, SCBX0, SCBX1) pendientes
 V9_SPR_LISTOS:  DB 0            ; 1: V9_ISR copia V9_SPR_BUF a la tabla de sprites
 V9_ULTIMO_PASO: DB 0            ; CONTADOR_FRAMES del ultimo paso del espejo
-V9_HAY_EXT:     DB 0            ; 1 con V9990 o con MSX2 (msx2.asm): CARGAR_NIVEL avisa
+V9_HAY_EXT:     DB 0            ; 1 con V9990, 2 con MSX2 (msx2.asm): CARGAR_NIVEL avisa
 
 ; --------------------------------------------------------------
 ;  V9_ISR: delante de ENTRADA_INTERRUPCION_VBLANK (ACTIVAR_

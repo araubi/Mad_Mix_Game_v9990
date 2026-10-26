@@ -16,7 +16,7 @@
 ;
 ;  V9_PRESENTE vale 2 mientras se ve SCREEN 5 (partida) y 0 en SCREEN
 ;  2, asi que fuera de la partida el juego hace exactamente lo de
-;  siempre. V9_HAY_EXT = 1 hace que CARGAR_NIVEL llegue aqui.
+;  siempre. V9_HAY_EXT = 2 hace que CARGAR_NIVEL llegue aqui.
 ;
 ;  VRAM (SCREEN 5, 128 bytes por linea, 4 paginas de 256 lineas):
 ;    paginas 0 y 1   pantalla que se ve y la que se compone (ventana
@@ -109,8 +109,18 @@ M2_INICIAR:
     XOR A
     LD B, 14
     CALL M2_REG                 ; el juego escribe en $0000-$3FFF
-    LD A, 1
-    LD (V9_HAY_EXT), A
+    ; en MSX2 solo Mad Mix Game, sin la opcion 3 (The Pepsi Challenge)
+    XOR A
+    LD HL, PEPSI_DIBUJAR_MENU.LINEA_3
+    LD (HL), A
+    INC HL
+    LD (HL), A
+    INC HL
+    LD (HL), A
+    LD A, $C3                   ; JP
+    LD (PEPSI_DESPACHAR.SALTO), A
+    LD A, 2
+    LD (V9_HAY_EXT), A          ; 2: MSX2
     RET
 
 ; A = 8 pixeles del MSX1 -> 4 bytes de SCREEN 5 (bit a 1: color 1,
