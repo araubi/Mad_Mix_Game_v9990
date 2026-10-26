@@ -118,14 +118,19 @@ M2_INICIAR:
     XOR A
     LD B, 14
     CALL M2_REG                 ; el juego escribe en $0000-$3FFF
-    ; en MSX2 solo Mad Mix Game, sin la opcion 3 (The Pepsi Challenge)
-    XOR A
-    LD HL, PEPSI_DIBUJAR_MENU.LINEA_3
-    LD (HL), A
-    INC HL
-    LD (HL), A
-    INC HL
-    LD (HL), A
+    ; en MSX2 solo Mad Mix Game, sin The Pepsi Challenge: el menu y las
+    ; teclas del original (3 redefine teclas, 4 demo)
+    LD HL, DIBUJAR_MENU_ORIGINAL
+    LD (DIBUJAR_MENU_PRINCIPAL + 1), HL
+    LD HL, $3433                ; "3" y "4"
+    LD A, L
+    LD (TEXTO_OPCION_REDEFINIR_TECLAS + 2), A
+    LD A, H
+    LD (TEXTO_OPCION_DEMO + 2), A
+    LD A, $10                   ; tecla 4: demo
+    LD (TABLA_TECLAS_MENU_PRINCIPAL + 1), A
+    LD A, $08                   ; tecla 3: redefine teclas
+    LD (TABLA_TECLAS_MENU_PRINCIPAL + 9), A
     LD A, $C3                   ; JP
     LD (PEPSI_DESPACHAR.SALTO), A
     XOR A

@@ -3616,7 +3616,26 @@ GESTIONAR_TIMEOUT_MENU:
 ; DRAW mas abajo). ---
 DIBUJAR_MENU_PRINCIPAL:                   ; $5BCC
     JP PEPSI_DIBUJAR_MENU       ; PROYECTO: menu con "3 MAD MIX GAME / THE PEPSI CHALLENGE" (pepsi.asm). Original:
-    DS 42, 0                    ; las 5 lineas en $0548, $0748, $0B48, $0D48 y $1048
+                                ; las 5 lineas en $0548, $0748, $0B48, $0D48 y $1048
+; PROYECTO: el menu original, para MSX2 (M2_INICIAR cambia el JP de
+; arriba): los 5 textos seguidos de TEXTO_MENU_PRINCIPAL en esas filas
+DIBUJAR_MENU_ORIGINAL:
+    LD DE, TEXTO_MENU_PRINCIPAL
+    LD HL, .FILAS
+.LINEA:
+    LD A, (HL)
+    AND A
+    RET Z
+    PUSH HL
+    LD H, A
+    LD L, $48
+    CALL DIBUJAR_TEXTO_VRAM     ; deja DE en el texto siguiente
+    POP HL
+    INC HL
+    JR .LINEA
+.FILAS:
+    DB $05, $07, $0B, $0D, $10, 0
+    DS DIBUJAR_MENU_PRINCIPAL + 45 - $, 0
 
     ; $5BF9-$5C39 (65 bytes): 5 registros de texto para
     ; DIBUJAR_MENU_PRINCIPAL: "1 TECLADO", "2 JOYSTICK",

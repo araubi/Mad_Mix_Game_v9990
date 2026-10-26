@@ -729,3 +729,15 @@ con el dibujo ya girado. Ahora: MSX1 contra el modelo con muñecos en
 otra orientación, 17132 píxeles sin fallos; MSX2 contra el modelo con
 37 muñecos en espejo, 15975 píxeles sin fallos.
 Desde f31 el zip de MSX2 ya no lleva la ROM con volumen (Rubén).
+
+## 34. f32 (2026-10-26): menú original en MSX2
+
+Rubén pidió la numeración del menú del original en MSX2: 1 TECLADO,
+2 JOYSTICK, 3 REDEFINE TECLAS, 4 DEMO y 0 JUGAR, en las filas y la
+columna de siempre ($0548, $0748, $0B48, $0D48 y $1048). Con GFX9000 y
+en MSX1 sigue el menú con la opción de The Pepsi Challenge.
+- DIBUJAR_MENU_ORIGINAL ocupa los 42 bytes libres tras el JP de
+  DIBUJAR_MENU_PRINCIPAL y pinta los 5 textos seguidos de
+  TEXTO_MENU_PRINCIPAL.
+- M2_INICIAR cambia ese JP, pone "3" y "4" en los textos y vuelve a las
+  teclas originales: la 3 redefine teclas y la 4 lanza la demo.
