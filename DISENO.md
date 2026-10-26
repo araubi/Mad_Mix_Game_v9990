@@ -542,3 +542,19 @@ a la izquierda, arriba, derecha y abajo, con la misma loseta de muro.
 Vale el entorno que comparte al menos 3 de los 4 lados, y a igualdad el
 más frecuente; si no hay, sigue la mezcla de §19. Cambia el suelo de 38
 celdas del nivel 1 y de ninguna de las demás fases.
+
+## 26. f2u (2026-10-26): aplastacocos centrado en los pasillos
+
+Rubén: el bicho verde que clava los cocos (Regpunantoso, fases 6 y 7)
+iba demasiado a la izquierda al subir y bajar. Los sprites del V9990 se
+colocan centrando su caja con la del sprite original, así que el dibujo
+seguía fiel al TMS; el desvío viene del motor: los items de
+TABLA_ITEMS_* llegan a MOTOR_ACTORES con la columna 2 unidades (4 px)
+a la izquierda de la del comecocos en la misma casilla (E=86 frente a
+88). Con el dibujo del grafista quedaba montado sobre la pared
+izquierda del pasillo.
+
+graficos.py tiene ahora AJUSTE (dx, dy por sprite, sumado al centrado):
++2 px a los sprites 45-53 (los verticales 48-53 y, para que no salte al
+girar, también los horizontales 45-47). Comprobado con capturas en el
+nivel 6 a la misma posición del actor (X=76) antes y después.

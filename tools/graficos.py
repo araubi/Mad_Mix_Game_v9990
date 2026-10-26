@@ -547,6 +547,13 @@ SPRITES = {
 # espaldas): los dibujos del grafista junto a la caja de la bola de poder
 # (f2j; en f2i eran los de Ruben, graficos/remake/excavadora_vertical.png).
 EXCAVADORA = {14: (368, 48, 16, 16), 15: (352, 48, 16, 16)}
+# Correccion a mano (dx, dy) sobre el centrado con el original: el motor
+# pone los items (TABLA_ITEMS_*) 4 px a la izquierda que el comecocos, y
+# el aplastacocos vertical (48-53) quedaba torcido hacia la pared
+# izquierda del pasillo (Ruben, f2u); el horizontal (45-47) va igual
+# para que no salte al girar.
+AJUSTE = {i: (2, 0) for i in range(45, 54)}
+
 # Hacia arriba y hacia abajo no hay izquierda ni derecha: el juego no usa
 # reflejados los sprites de esas direcciones (comecocos, excavadora e
 # hipopotamo: subtablas A-D), y sus patrones hacen falta.
@@ -707,6 +714,7 @@ def sprites(mem):
             ox, oy = caja(original(mem, 6 if i == 64 else i, espejo))
             rx, ry = caja(pts)
             dx, dy = round(ox - rx), round(oy - ry)
+            dx, dy = dx + AJUSTE.get(i, (0, 0))[0], dy + AJUSTE.get(i, (0, 0))[1]
             partes = []
             for py in range(0, h, 16):
                 for px in range(0, w, 16):
