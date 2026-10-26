@@ -568,3 +568,29 @@ reflejarlo el cuerpo se desplaza 4 px a la derecha. El V9990 copiaba
 ese salto. AJUSTE pasa a tener claves (sprite, espejo) y el (23, 1)
 lleva -4 px: el cuerpo queda en las mismas columnas (2-17) mirando a
 cualquier lado y solo cambia de lado el cañón.
+
+## 28. f2w (2026-10-26): bichos fuera del mapa y suelo de tres bolas
+
+**Mariquita fuera del mapa.** En una partida de Rubén (fase 14) la
+mariquita acabó andando por la zona negra de debajo del laberinto. Las
+filas que rodean el cuerpo del nivel en $FC50 son la loseta 66
+(loseta_solida_negra, tipo 16), que para los bichos es transitable; y
+MOTOR_MOVIMIENTO_ITEM, cuando no hay ninguna salida libre, sigue hacia
+la derecha atravesando lo que haya (TABLA_ELECCION_DIRECCION, fila
+"ninguna"; así salen de la casa). Pasa igual en el juego original: el
+TMS también la dibuja ahí. No se ha podido reproducir el camino exacto
+(la repetición es de la HB-F900 y aquí no están sus ROM), así que se
+corta por el efecto: GUARDAR_POSICION_Y llama a GUARDAR_Y_ITEM_OPT
+(pepsi.asm, en el hueco tras el motor, $DDCB), que guarda la Y como
+antes y, si la fila queda fuera del cuerpo (3 a 3+REGISTRO_NIVEL_FILAS-1),
+devuelve el bicho a REGISTRO_NIVEL_FILA_COLUMNA, el punto de salida de
+INICIALIZAR_ITEMS_NIVEL. Vale para fantasmas, mariquitas y
+aplastacocos. El aleatorio usa R, así que cualquier cambio de código
+cambia las partidas de prueba.
+
+**Suelo de las bolas.** En el mapa del grafista del nivel 15 la bola a
+la derecha de la flecha bajo el muro vertical (fila 7, columna 23)
+tiene un suelo que no sale en ninguna otra bola. graficos.py cambia
+cada bola (45-47) con un dibujo único en su nivel por la más frecuente
+de su valor con los mismos muros alrededor (3 de 4 lados). Cambian
+también una del 9 (17, 25) y una del 11 (16, 3).

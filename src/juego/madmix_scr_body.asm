@@ -2103,8 +2103,10 @@ MOTOR_MOVIMIENTO_ITEM:                        ; $5278
     LD (IX+4), $00
     SBC HL, DE                ; codigo 4: Y -= paso
 .GUARDAR_POSICION_Y:
-    LD (IX+5), L
-    LD (IX+1), H
+    CALL GUARDAR_Y_ITEM_OPT    ; PROYECTO: guarda Y y devuelve al punto de salida al bicho que se sale del mapa (pepsi.asm, tras el motor). Original:
+    NOP                        ; LD (IX+5),L / LD (IX+1),H
+    NOP
+    NOP
 ; --- Segundo punto de entrada de MOTOR_MOVIMIENTO_ITEM, llamado directo desde
 ; ACTUALIZAR_DESTELLO_ITEMS (sin pasar por las comprobaciones de "detras de
 ; camara" de arriba): calcula la direccion VRAM (D/E) de la posicion

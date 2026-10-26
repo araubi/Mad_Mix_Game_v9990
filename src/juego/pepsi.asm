@@ -211,6 +211,41 @@ PEPSI_SUBTABLAS:                ; desde SUBTABLA_DIRECCION_A + 16
     INCBIN "../../build/pepsi_subtablas.bin"
 PEPSI_INDICADORES:              ; desde PTR_TABLA_SPRITES + 2
     INCBIN "../../build/pepsi_indicadores.bin"
+    ; (no es de Pepsi: aprovecha el hueco tras el motor)
+; --------------------------------------------------------------
+;  GUARDAR_Y_ITEM_OPT: desde MOTOR_MOVIMIENTO_ITEM.GUARDAR_POSICION_Y
+;  (HL = Y:subY). Guarda la Y como el original y, si el bicho ha
+;  quedado fuera de las filas del cuerpo del nivel (filas 3 a
+;  3+REGISTRO_NIVEL_FILAS-1 del buffer $FC50), lo devuelve al punto de
+;  salida de INICIALIZAR_ITEMS_NIVEL. Bug del original: sin salida
+;  libre el bicho sigue a la derecha atravesando muros (asi salen de
+;  la casa) y podia acabar en la loseta negra (66, transitable) de
+;  fuera del mapa, como la mariquita de la fase 14. Conserva todo
+;  menos AF.
+; --------------------------------------------------------------
+GUARDAR_Y_ITEM_OPT:
+    LD (IX+5), L
+    LD (IX+1), H
+    LD A, H
+    RRCA
+    RRCA
+    AND $1F                     ; fila del buffer (como MAPEAR_COORDENADA_A_DIRECCION)
+    SUB 3
+    JR C, .FUERA                ; en la cabecera
+    PUSH HL
+    LD HL, REGISTRO_NIVEL_FILAS
+    CP (HL)
+    POP HL
+    RET C                       ; dentro del cuerpo
+.FUERA:
+    PUSH HL
+    LD HL, (REGISTRO_NIVEL_FILA_COLUMNA)
+    LD (IX+0), L
+    LD (IX+1), H
+    LD (IX+4), $00
+    LD (IX+5), $00
+    POP HL
+    RET
 FIN_PEPSI_TABLAS:
     ASSERT FIN_PEPSI_TABLAS <= BUFFER_LOSETAS_TRABAJO
 

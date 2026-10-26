@@ -288,6 +288,26 @@ def laberinto(mem):
                 arregladas += 1
         if arregladas:
             print(f"  nivel {n:2}: {arregladas} celdas sin su objeto en el mapa")
+        # Bolas dibujadas sobre un suelo que no sale en ninguna otra bola del
+        # nivel (f2w: en el 15, la de la derecha de la flecha bajo el muro
+        # vertical): la bola mas frecuente de las del mismo valor con los
+        # mismos muros alrededor (al menos 3 de los 4 lados).
+        def muro_b(i):
+            return 0 <= i < filas * 32 and m[i] != comodin and m[i] not in COMIBLES
+
+        def entorno(i):
+            return tuple(t[j] if muro_b(j) else None
+                         for j in (i - 1 if i % 32 else -1, i - 32, i + 1 if i % 32 != 31 else -1, i + 32))
+        for v in (45, 46, 47):
+            celdas = [i for i in range(filas * 32) if m[i] == v]
+            veces = Counter(t[i] for i in celdas)
+            raras = [i for i in celdas if veces[t[i]] == 1 and t[i] not in suelos]
+            for i in raras:
+                otras = Counter(t[j] for j in celdas if j not in raras
+                                and sum(a == b for a, b in zip(entorno(j), entorno(i))) >= 3)
+                if otras:
+                    t[i] = otras.most_common(1)[0][0]
+                    print(f"  nivel {n:2}: bola de la fila {i // 32}, columna {i % 32} con el suelo de las demas")
         con_trampilla, respaldo_trampilla = trampillas(mem, m, filas, t, pal)
         for i, x in con_trampilla.items():
             t[i] = x
