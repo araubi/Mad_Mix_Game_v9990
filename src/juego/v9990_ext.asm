@@ -492,7 +492,7 @@ V9_TIC:
     RET
 .JUEGO:
     CALL V9_BORRAR_OVERLAY
-    CALL V9_PARPADEO            ; v9_portada.asm
+    CALL V9_PEPSI_ROJA          ; pepsi_roja.asm (y V9_PARPADEO, v9_portada.asm)
     ; --- nivel recien cargado: paleta y matriz entera ---
     LD A, (V9_NIVEL_NUEVO)
     AND A

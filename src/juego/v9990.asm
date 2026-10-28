@@ -205,6 +205,9 @@ V9_PORTADA:
     AND A
     LD A, MODO_PORTADA
     CALL NZ, V9_PONER_MODO
+    DI                          ; V9_PONER_MODO vuelve con EI: una interrupcion
+                                ; (la musica) en mitad del volcado de la portada
+                                ; mueve el puntero del TMS y la corrompe
     LD A, (V9_PRESENTE)
     AND A
     RET NZ                      ; el TMS sigue encendido con la pantalla de carga

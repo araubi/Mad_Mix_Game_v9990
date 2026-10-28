@@ -264,7 +264,7 @@ FIN_PEPSI_TABLAS:
 ;  Pepsi Challenge, V9_META_PEPSI para los sprites 0-11, 57-61 y 63. Con
 ;  Mad Mix, el 6 (hacia arriba) con la bola de poder (MODO_ESPECIAL 1,
 ;  el que elige la subtabla de direccion B) es el rojo; con The Pepsi
-;  Challenge la mascota va con la paleta del TMS (roja). Los fantasmas
+;  Challenge la mascota roja la pone V9_PEPSI_ROJA. Los fantasmas
 ;  normales salen de colores. Deja en V9_PREPARAR_SPRITES.ATRIB la paleta
 ;  del sprite. IX -> el actor en V9_ACTORES.
 ; --------------------------------------------------------------
@@ -324,26 +324,10 @@ V9_META_ELEGIR:
 .ROJO:
     DW V9_META_ROJO_ARRIBA
 .PEPSI_MODO:
-    ; con la bola de poder, la mascota en rojo: los dibujos del grafista
-    ; ya lo son (f2n), salvo hacia arriba (6 y 63), que se pone roja con
-    ; la paleta del TMS (rojo claro donde la de los sprites tiene su amarillo)
-    LD A, (MODO_ESPECIAL)
-    AND $07
-    DEC A
-    JR NZ, .PEPSI_MAPA
-    LD A, L
-    AND $FE
-    CP 6 * 2
-    JR Z, .PEPSI_ROJA
-    CP 63 * 2
-    JR C, .PEPSI_MAPA
-.PEPSI_ROJA:
-    IFDEF VOLUMEN
-    LD A, $A0                   ; la 0-15 ya no es la del TMS: se queda amarilla
-    ELSE
-    LD A, $20
-    ENDIF
-    LD (V9_PREPARAR_SPRITES.ATRIB + 1), A
+    ; con la bola de poder la mascota va en rojo: los dibujos del grafista
+    ; ya lo son (f2n) y hacia arriba (6 y 63) el amarillo (entrada 9 de la
+    ; paleta de los sprites, solo de la mascota) pasa al mismo rojo
+    ; (V9_PEPSI_ROJA, pepsi_roja.asm)
 .PEPSI_MAPA:
     LD A, L
     CP 24

@@ -43,7 +43,7 @@ TABLAS = [
                      ("ram_7700.bin", 0x7700), ("ram_7ff0.bin", 0x7FF0),
                      ("ram_8400.bin", 0x8400), ("ram_dda1.bin", 0xDDA1),
                      ("ram_f010.bin", 0xF010)]),
-    ("TABLA_EXT", [("ram_0100.bin", 0x0100), ("ram_0f00.bin", 0x0F00)]),
+    ("TABLA_EXT", [("ram_0100.bin", 0x0100), ("ram_0f00.bin", 0x0F00), ("ram_0040.bin", 0x0040)]),
     # MSX2 sin GFX9000 (msx2.asm): encima de TABLA_EXT
     ("TABLA_M2", [("ram_m2_0100.bin", 0x0100), ("ram_f300.bin", 0xF300), ("ram_m2_alta.bin", 0x7E80)]),
 ]
@@ -72,7 +72,6 @@ PASAR_FASE = "--pasarfase" in sys.argv
 VOLUMEN = "--volumen" in sys.argv
 if VOLUMEN:
     os.environ["MADMIX_VOLUMEN"] = "1"       # tools/graficos.py
-    TABLAS[2][1].append(("ram_0040.bin", 0x0040))
 
 
 def sjasmplus(cwd, fuente):
