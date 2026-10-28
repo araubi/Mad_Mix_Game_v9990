@@ -94,6 +94,13 @@ PEPSI_ALTERNAR:
     LD A, (V9_PRESENTE)
     AND A
     RET NZ
+    ; TMS: con el Super Coco la mascota en rojo (color $58, rojo medio)
+    ; en vez del amarillo ($30) del comecocos; $30 xor $58 = $68
+    LD HL, PEPSI_COLOR_BOLA_1 + 1
+    LD A, (HL)
+    XOR $68
+    LD (HL), A
+    LD (PEPSI_COLOR_BOLA_2 + 1), A
     ; TMS: el motor da la vuelta a los sprites en su sitio (bits 6-7 del
     ; indicador de PTR_TABLA_SPRITES); se dejan derechos antes del XOR
     LD A, 3

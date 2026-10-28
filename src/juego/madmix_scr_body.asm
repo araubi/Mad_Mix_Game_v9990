@@ -538,6 +538,7 @@ TICK_MODO_ESPECIAL:
     CP 60
     JR NC, TICK_MODO_HIPOPOTAMO                  ; todavia queda tiempo de sobra -> nada mas que hacer
     AND $01
+PEPSI_COLOR_BOLA_2:                     ; PROYECTO: idem (parpadeo del final)
     LD A, $30
     JR Z, PARPADEO_COLOR_BOLA_PODER                     ; parpadeo del icono de HUD en los ultimos instantes del modo
     LD A, (COLOR_GUARDADO)
@@ -1283,6 +1284,7 @@ HNDLR_BOLA_PODER:
     LD (MODO_ESPECIAL_CUENTA_ATRAS), A
     LD A, (COLOR_ACTUAL)
     LD (COLOR_GUARDADO), A
+PEPSI_COLOR_BOLA_1:                     ; PROYECTO: pepsi.asm pone $58 (rojo) en el TMS con The Pepsi Challenge
     LD A, $30
     LD (COLOR_ACTUAL), A
     LD A, 1
