@@ -1,6 +1,6 @@
 # Gráficos del remake de Mad Mix Game: qué hay y dónde
 
-Material del grafista del remake (2013-2015), entregado por araubi el 2026-10-21:
+Material de Guantxip, grafista del remake (2013-2015), entregado por araubi el 2026-10-21:
 64 ficheros dentro de una carpeta `mad mix game remake/`. En este repositorio solo
 están los que usa la build, en `graficos/remake/`.
 

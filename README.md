@@ -63,7 +63,7 @@ El historial es el del trabajo real, reescrito para quitar las ROM del juego ori
 - Juego original: *Mad Mix Game*, Topo Soft, 1988. Programación «Raphael Gomezzz», gráficos Roberto P. Acebes, música «Comilonas» (según los créditos del propio juego).
 - Desensamblado, etiquetas y comentarios de la base: Rafael Eduardo Martín Candial, [github.com/raemca/MSX_MadMixGame](https://github.com/raemca/MSX_MadMixGame) (CC BY-NC-SA 4.0).
 - Corrección del nivel 13/14 y pila en `$F2FF`: Manuel Pazos (2013).
-- Gráficos de la versión GFX9000: los del remake de Mad Mix Game de su grafista (2013-2015).
+- Gráficos de la versión GFX9000: Guantxip (remake de Mad Mix Game, 2013-2015).
 - Dirección, pruebas en máquina real y retoques: araubi.
 - Código, herramientas y documentación: desarrollados con Claude (Anthropic).
 
@@ -72,5 +72,5 @@ El historial es el del trabajo real, reescrito para quitar las ROM del juego ori
 - **Herramientas** (`tools/`, `pruebas/`): [MIT](LICENSE).
 - **Fuentes y documentación** (`src/`, `docs/`, README): [CC BY-NC-SA 4.0](LICENSE-CC), la misma del desensamblado de raemca del que derivan.
 - **Juego original y ficheros de `releases/`:** *Mad Mix Game* y *The Pepsi Challenge* son obra de Topo Soft (1988) y sus derechos son de sus titulares, igual que los datos del juego que hay en `src/juego/data/`. Los ficheros de `releases/` contienen el juego original modificado y no están cubiertos por ninguna de las licencias anteriores. Esta versión es un homenaje sin ánimo de lucro: no se reclama ningún derecho sobre el original, y los ficheros se retirarán si los titulares lo piden.
-- **Gráficos del remake** (`graficos/remake/`): son de su autor y se usan con su permiso; no están cubiertos por las licencias anteriores.
+- **Gráficos del remake** (`graficos/remake/`): son de Guantxip y se usan con su permiso; no están cubiertos por las licencias anteriores.
 - **Marcas:** Pepsi es una marca de sus titulares; se usa solo porque aparece en *The Pepsi Challenge* original.
