@@ -1,5 +1,9 @@
 # Mad Mix Game v9990 — resumen del proyecto
 
+*Diario del proyecto tal como se fue escribiendo. Los `madmix_fXX.zip` que se
+citan son las entregas de cada versión; cada una tiene su etiqueta en este
+repositorio (`f2b` ... `f34`) y se reconstruye con `tools/build.py`.*
+
 *Estado a 20 de octubre de 2026 (F1 terminada).*
 
 ## Objetivo
@@ -187,7 +191,7 @@ y paletas del grafista en las 15 fases, actores como sprites, marco,
 marcador y portada nuevos, textos FASE/READY?/ESTÁS FRITO, y menús copiados
 de la pantalla del TMS. Sin GFX9000: idéntica a f1c. Probada en openMSX
 (C-BIOS MSX1 y MSX2) hasta el fin de partida; falta máquina real y que
-Rubén la vea. Diseño en DISENO.md §7.
+araubi la vea. Diseño en DISENO.md §7.
 
 ## Plan del port al V9990
 
@@ -213,7 +217,7 @@ original o rediseñarlos? Propuesta: reproducirlos primero.
 ## Dónde está el código
 
 - **Repositorio git completo** (historia y etiquetas `f0`, `f0b`, `f0c`,
-  `f1`, `f1c`; `f0e` en la rama `msx1`): `/mnt/project-files/mad_mix_v9990/mad_mix_v9990_repo.zip`.
+  `f1`, `f1c`; `f0e` en la rama `msx1`): este repositorio.
   Aún no está en GitHub.
 - Estructura: `src/juego/` (fuentes del juego con los parches,
   `optimizaciones.asm` y `v9990.asm`), `src/rom/rom.asm` (cargador),
@@ -237,9 +241,112 @@ original o rediseñarlos? Propuesta: reproducirlos primero.
 - Arreglo del nivel 13/14 y pila en `$F2FF`: Manuel Pazos (2013).
 
 ## Fallo gráfico al hacer scroll (resuelto en f0e/f1c, 2026-10-21)
-Rubén veía trozos de pared desplazados al hacer scroll (f0c/f0d, openMSX y HB-20P). Con su replay de openMSX (MadMixGame.omr, HB-20P) se vio la causa: el buffer siempre está bien, pero volcarlo al TMS9918 cuesta ~1,5 frames y el haz alcanzaba la fila que se estaba escribiendo (una fila a medio escribir por tic). También pasa en el juego original.
+araubi veía trozos de pared desplazados al hacer scroll (f0c/f0d, openMSX y HB-20P). Con su replay de openMSX (MadMixGame.omr, HB-20P) se vio la causa: el buffer siempre está bien, pero volcarlo al TMS9918 cuesta ~1,5 frames y el haz alcanzaba la fila que se estaba escribiendo (una fila a medio escribir por tic). También pasa en el juego original.
 - Arreglo (`src/juego/volcado_haz.asm`): cada fila se escribe detrás del haz. Referencia de línea: 5 sprites transparentes en Y=24 y el indicador de quinto sprite. Las filas 7-11 (5 a 50 Hz, 2 a 60 Hz) se trasponen antes y se envían con OUTI en el borde; si solo caben 4, la siguiente va a 26 ciclos por byte, aún en el borde; si caben menos, se vuelca un frame después. La música de la ISR se aplaza al final del volcado.
 - Medido en openMSX 21 a 50 Hz: la fila 17 acaba hacia la línea 521-531 con el límite en la 534; ningún fotograma cortado en 500 capturas de partida (f0d: un corte por tic). A 60 Hz no cabe: las 4 últimas filas se ven un frame tarde (f0d tenía dos cortes por tic).
 - La demo determinista da el mismo estado y el mismo buffer tic a tic que f0d/f1b. Coste: ~3-4 % menos de tics por segundo en la demo (9,35 → 9,06 en f0e a 50 Hz), porque el volcado espera a que el haz pase la fila 0.
-- Las filas traspuestas van en $7FF0-$83B0 (libre tras SOMBRA_MATRIZ). Falta que Rubén lo pruebe en la HB-20P y la HB-F900.
+- Las filas traspuestas van en $7FF0-$83B0 (libre tras SOMBRA_MATRIZ). Falta que araubi lo pruebe en la HB-20P y la HB-F900.
 - Para reproducir un replay de una máquina real sin su BIOS: openMSX 21 compilado (/opt/openMSX21) y cambiar en el .omr el sha1 de la BIOS por el de la C-BIOS equivalente.
+
+## f2b (2026-10-22): fantasmas, logo de Topo en la GFX9000 y pantalla de carga fija
+- ROM: `madmix_f2b.zip` (madmix_v9990_f2b.rom + capturas). Repo con la etiqueta `f2b` en `mad_mix_v9990_repo.zip`; detalles en DISENO.md §8.
+- Los fantasmas ya miran hacia donde van (estaban cambiados el dibujo normal y el girado).
+- El logo de Topo Soft sale entero en la GFX9000 y sincronizado con el del TMS. Al principio va algo más lento: en openMSX con C-BIOS MSX2 tarda 7,65 s frente a 6,03 s.
+- Con GFX9000, la pantalla del MSX muestra la pantalla de carga original:
+  - En MSX2 se queda todo el rato, porque se guarda en la VRAM alta del V9938.
+  - En MSX1 solo se ve al arrancar y durante el logo, porque el juego necesita los 16 KB del TMS y la pinta encima.
+- Sin GFX9000, el juego es idéntico a f1c en C-BIOS MSX1 y MSX2.
+- Diferencias con The Pepsi Challenge, la versión inglesa: [PEPSI_DIFERENCIAS.md](PEPSI_DIFERENCIAS.md).
+
+## f2c (2026-10-22): opción 3, Mad Mix Game o The Pepsi Challenge
+- ROM: `madmix_f2c.zip`. Detalles en DISENO.md §9 y `src/juego/pepsi.asm`.
+- Menú nuevo:
+  - 1 TECLADO
+  - 2 JOYSTICK
+  - 3 MAD MIX GAME / THE PEPSI CHALLENGE (la tecla 3 alterna)
+  - 4 REDEFINE TECLAS
+  - 5 DEMO
+  - 0 JUGAR
+- The Pepsi Challenge:
+  - La mascota de Pepsi sale en lugar del comecocos, también en la GFX9000, donde va en amarillo.
+  - Empieza en el nivel 2, que se ve como fase 1, y vuelve al 2 después del 15, que se ve como 14.
+- Sin cambiar de juego, la partida es idéntica a f1c.
+- La ROM sigue en 256 KB porque la carga empieza en el banco 0.
+
+## f2d (2026-10-22): arreglos a f2c
+- ROM: `madmix_f2d.zip` (madmix_v9990_f2d.rom + capturas). Detalles en DISENO.md §10 (ahora también §8 y §9).
+- GFX9000: el comecocos mirando a la izquierda iba 6 píxeles a la derecha (no llegaba al borde y comía antes de tiempo). Ya va donde lo pone el TMS.
+- The Pepsi Challenge con la animación de su cinta: sube andando (Mad Mix usa un dibujo quieto) y con la bola de poder baja en su orden. En TMS y GFX9000.
+- GFX9000: con la bola de poder el comecocos también es rojo hacia arriba (dibujo del grafista).
+- Nivel 1: se ven los tres cocos junto a la salida, que el mapa del grafista no traía; también algún objeto suelto en los niveles 6, 8, 11 y 15.
+- Sin cambiar de juego, idéntica a f1c en el TMS (C-BIOS MSX1 y MSX2). Falta que araubi la pruebe.
+
+## f2e (2026-10-22): fantasmas blancos hacia arriba
+- ROM: `madmix_f2e.zip`. GFX9000: tras el super coco los fantasmas que suben ya salen blancos (el juego usaba para subir el mismo sprite que los normales). DISENO.md §10. TMS sin cambios (idéntica a f1c).
+
+## f2f (2026-10-22): fantasmas de colores y Pepsi roja
+- ROM: `madmix_f2f.zip`. GFX9000: fantasmas rojo, rosa, cian y naranja como en Pac-Man (vulnerables y muertos como antes); la mascota de Pepsi se pone roja con el supercoco. DISENO.md §10. TMS sin cambios (idéntica a f1c). araubi va a hacer un testeo a fondo.
+
+
+## f2g (2026-10-22): primeros reportes del testeo
+
+Entregado en `madmix_f2g.zip` (`madmix_v9990_f2g.rom` + capturas).
+
+- Redefinir teclas ya no se cuelga con GFX9000 (la tecla se escribía encima de la rutina de interrupción del V9990; venía de f2b).
+- Portada nueva del grafista (`portada.bmp`, 62 colores) en el V9990, en modo bitmap; con ella se va el gris lila.
+- El menú aparece entero de golpe y antes (~0,9 s en openMSX).
+- Pendiente: el temblor al transformarse junto a la frontera eléctrica (no reproducido aún).
+
+## f2h (2026-10-22): madmix_f2h.zip
+
+Segundo testeo de araubi en máquina real.
+- Trampillas visibles desde el principio (el mapa del grafista no las traía; dibujadas con la forma de las originales en los colores del nivel). Mejor si el grafista dibuja las suyas.
+- Excavadora con dibujo hacia arriba y hacia abajo (el de lado girado; el grafista solo dibujó el de lado).
+- Últimos 3 s de la bola de poder: el comecocos alterna rojo y amarillo cada 0,5 s; del hipopótamo, rosa y amarillo.
+- Temblor al coger la bola de poder: causa probable, la ISR del TMS (hasta 4 ms con ese efecto) retrasaba el scroll del V9990 en máquina real; ahora deja interrumpir al V9990. No se ve en openMSX (los dos VDP van a la par): falta confirmarlo en real.
+- Sin GFX9000, idéntica a f1c.
+- f2i (madmix_f2i.zip): excavadora arriba/abajo con los dibujos de araubi (vista de frente y de espaldas, como en MSX1).
+
+## f2j (2026-10-23): madmix_f2j.zip
+
+- El logo de Topo con GFX9000 ya no se atasca: va al ritmo del TMS, saltando pasos si hace falta.
+- En el menú, «2 JOYSTICK» se pone blanco al elegirlo (el espejo del V9990 no notaba ese cambio de color).
+- READY? con fondo negro en el V9990.
+- Excavadora hacia arriba y hacia abajo y trampillas: los dibujos del grafista, sacados de «or fase 1.png».
+- En turbo R se pasa solo al R800 (sin probar aquí: no hay BIOS de turbo R).
+- Sin GFX9000, idéntica a f1c.
+- f2k (madmix_f2k.zip): arreglado el bote del laberinto entre FASE 1 y READY? con GFX9000 (el scroll se escribía con la imagen ya empezada).
+- f2l (madmix_f2l.zip): logo de Topo con GFX9000 sin parones (cada byte se pinta al momento en el V9990); con el hipopótamo los fantasmas salen de su color y no azules. El R800 no acelera el juego: va a 10 tics/s fijos.
+- f2m (madmix_f2m.zip): arreglado un fallo del juego original por el que una flecha podía contar dos veces y la fase acababa con un coco sin comer; quitado el bote al acabar el logo de Topo con GFX9000.
+- f2n (madmix_f2n.zip): la mascota de The Pepsi Challenge con los dibujos del grafista (roja con el Super Coco; hacia arriba, roja por paleta).
+- f2o (madmix_f2o.zip): las flechas vuelven a obligar a girar (lo rompió el arreglo de f2m); sigue sin contarse dos veces una flecha.
+- f2p (madmix_f2p.zip): sin la raya de 1 píxel en el suelo al comer flechas (nivel 9 y algunos más).
+- f2p_pasarfase (madmix_f2p_pasarfase.zip): ROM de pruebas igual que f2p, pero F1 pasa a la fase siguiente (una por pulsación).
+- f2q (madmix_f2q.zip): en el nivel 13 se ve el icono de excavadora del punto de salida (el mapa del grafista no lo traía). Lleva también la ROM de pruebas con F1 para pasar de fase.
+- f2r (madmix_f2r.zip): la flecha amarilla del nivel 14 pasa a blanca como las demás (venía así en el mapa del grafista). Con ROM de pruebas F1.
+- f2s (madmix_f2s.zip): en el nivel 14 las dos casillas de excavadora del centro llevan su icono (la segunda venía mal en el mapa del grafista). Con ROM de pruebas F1.
+- Prueba «volumen» sobre f2s (madmix_f2s_volumen.zip): muñecos sombreados con degradado de 3 tonos (amarillo, rosa y verde) usando la paleta 0-15 en partida; fantasmas y mascota de Pepsi sin cambios. Falta opinión de araubi y del grafista.
+
+## MSX2 (2026-10-26)
+
+araubi eligió SCREEN 5 con los gráficos del MSX1 por ahora (habrá otro grafista para MSX2).
+- Fase 0 (msx2/madmix_msx2_fase0_velocidad.zip, pruebas/msx2/LEEME.md): fondo en anillo en la página 3 + ventana copiada + actores con LMMM. 50 Hz: 5 frames por tic (presupuesto 5) con 10 actores; 60 Hz: 6-7 (presupuesto 6). Recomponer todo cada tic tardaba 10: descartado.
+- f2t (madmix_f2t.zip): el suelo que queda al comer los Super Cocos del nivel 1 lleva la sombra de su muro (a la derecha), igual que las casillas vecinas. Con ROM de pruebas F1.
+- f2u (madmix_f2u.zip): el aplastacocos verde (fases 6 y 7) va 2 px a la derecha y queda centrado en los pasillos al subir y bajar. Con ROM de pruebas F1.
+- f2v (madmix_f2v.zip): el tanque mirando a la izquierda ya no se desplaza 4 px a la derecha (el cuerpo queda donde mirando a la derecha). Con ROM de pruebas F1.
+- f2w (madmix_f2w.zip): un bicho que se sale del laberinto (la mariquita de la fase 14, fallo del original) vuelve a su punto de salida; la bola junto a la flecha de la fase 15 (y una del 9 y otra del 11) lleva el suelo de las demás. Con ROM de pruebas F1.
+- f2x (madmix_f2x.zip): el logo de Topo del marcador se ve entero (le faltaban sus 4 líneas de abajo). Con ROM de pruebas F1.
+- Desde f2x cada zip lleva también la ROM con volumen (_volumen.rom, build.py --volumen).
+- f2y (madmix_f2y.zip): MSX2 fase 1. Sin GFX9000, en un MSX2 con 128 KB de VRAM la partida sale en SCREEN 5: laberinto con las losetas del MSX1, su color, scroll y casillas comidas (los muñecos y el marcador, fase 2). Menús en SCREEN 2. V9990 y MSX1 sin cambios.
+- f2z (madmix_f2z.zip): MSX2 fase 2. Sin la opción The Pepsi Challenge en MSX2. Muñecos con transparencia (idénticos píxel a píxel al MSX1), recuadro de color del comecocos, marco, vidas, puntos y textos FASE, READY? y ESTÁS FRITO. V9990 y MSX1 sin cambios.
+- f30 (madmix_f30.zip): MSX2 a la misma velocidad que el MSX1 (antes cada tic tardaba casi el triple). V9990 y MSX1 sin cambios.
+- f31 (madmix_f31.zip): en MSX2, el comecocos y los fantasmas mirando a la izquierda se ven bien. El zip ya no lleva la ROM con volumen.
+- f32 (madmix_f32.zip): en MSX2, el menú vuelve a ser el del original (3 REDEFINE TECLAS, 4 DEMO).
+
+## f33 (2026-10-28): The Pepsi Challenge, mascota roja con el Super Coco en MSX1
+- ROM: `madmix_f33.zip` (normal + pasarfase). En el TMS el Super Coco ponía la mascota en amarillo (el color $30 del comecocos, igual que en la cinta original de Pepsi); ahora, con The Pepsi Challenge, va en rojo ($58) y parpadea rojo/blanco al final. Mad Mix Game sigue en amarillo y la GFX9000 no cambia (ya era roja).
+
+## f34 (2026-10-28)
+- ROM: `madmix_f34.zip` (normal, pasarfase y volumen).
+- Con GFX9000, la salida MSX dejaba corrupta la pantalla de carga al empezar la música: V9_PORTADA volvía de V9_PONER_MODO con EI y la interrupción movía el puntero del TMS en mitad del volcado. Ahora DI.
+- The Pepsi Challenge en GFX9000 (normal y volumen): hacia arriba con el Super Coco, la entrada 9 de la paleta de sprites (amarillo, solo de la mascota) pasa al rojo de los dibujos del grafista (V9_PEPSI_ROJA, pepsi_roja.asm en $0040/tras volumen.asm); antes usaba la paleta del TMS (otro rojo) y con volumen se quedaba amarilla.

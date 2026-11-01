@@ -1,6 +1,6 @@
 ; ==============================================================
 ;  pepsi.asm -- Mad Mix Game v9990: opcion "3 MAD MIX GAME / 3 THE
-;  PEPSI CHALLENGE" del menu principal (peticion de Ruben, 2026-10-22).
+;  PEPSI CHALLENGE" del menu principal (peticion de araubi, 2026-10-22).
 ;
 ;  The Pepsi Challenge (Topo Soft / US Gold, 1988) es la version inglesa
 ;  de Mad Mix Game: la mascota de Pepsi en lugar del comecocos y sin el

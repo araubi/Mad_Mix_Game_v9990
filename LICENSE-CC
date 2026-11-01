@@ -1,0 +1,19 @@
+Fuentes y documentacion de "Mad Mix Game v9990"
+Copyright (c) 2026 araubi
+
+Se publican bajo la licencia Creative Commons Atribucion-NoComercial-CompartirIgual 4.0
+Internacional (CC BY-NC-SA 4.0): https://creativecommons.org/licenses/by-nc-sa/4.0/deed.es
+Texto legal completo: https://creativecommons.org/licenses/by-nc-sa/4.0/legalcode.es
+
+Cubre:
+- los cambios y el codigo nuevo de src/ (V9990, MSX2, optimizaciones, arreglos, The Pepsi
+  Challenge, cartucho). Las fuentes de src/juego/ son una obra derivada del desensamblado de
+  Rafael Eduardo Martin Candial (github.com/raemca/MSX_MadMixGame), publicado con esta misma
+  licencia CC BY-NC-SA 4.0, que exige compartir las obras derivadas con la misma licencia;
+- la documentacion (carpeta docs/ y README).
+
+No cubre:
+- el juego original Mad Mix Game y The Pepsi Challenge (codigo, graficos, sonido, diseno y
+  marcas), de Topo Soft, ni sus datos incluidos en src/juego/data/, que siguen siendo de sus
+  titulares;
+- los graficos del remake de graficos/remake/, que son de su autor y se usan con su permiso.

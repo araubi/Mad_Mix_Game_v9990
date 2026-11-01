@@ -156,7 +156,7 @@ volcado de la ventana. Sin GFX9000 el juego es idéntico a f1c (comprobado
 con `compara.sh` y las ROM `--pruebas`: capturas idénticas de 22 a 54 s).
 
 **Gráficos.** `tools/graficos.py` convierte `graficos/remake/` (del
-grafista, entregados por Rubén) a `build/v9_*.bin` y `build/v9_datos.inc`;
+grafista, entregados por araubi) a `build/v9_*.bin` y `build/v9_datos.inc`;
 `build.py` lo ejecuta entre dos pasadas de sjasmplus. El cargador de la ROM
 (`V9_SUBIR`, `src/rom/rom.asm`) sube los fragmentos a la VRAM antes de
 arrancar.
@@ -221,7 +221,7 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   mascota en amarillo y negro, misma rejilla de 24×24 que el TMS).
 - La carga de la ROM empieza en el banco 0 ($5800) para seguir en 256 KB.
 
-## 10. f2d: arreglos de Rubén a f2c (2026-10-22)
+## 10. f2d: arreglos de araubi a f2c (2026-10-22)
 
 - **Comecocos hacia la izquierda en el V9990.** Reflejado, el motor del
   TMS lo dibuja además desplazado a la izquierda tantos píxeles como
@@ -330,7 +330,7 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
 - `V9_NT_COLOR` pasa a bucle para dejar sitio en $F010-$F200.
 - Sin GFX9000 la partida es idéntica a f1c (C-BIOS MSX1 y MSX2); con GFX9000,
   la partida del nivel 1 es idéntica a f2g.
-- **f2i: excavadora de Rubén.** Hacia abajo y hacia arriba son sus dibujos
+- **f2i: excavadora de araubi.** Hacia abajo y hacia arriba son sus dibujos
   (a partir de los originales de MSX1, `graficos/remake/excavadora_vertical.png`,
   `EXCAVADORA`), con brillo y sombra en la pala. Para que quepan, tampoco se
   generan reflejados los sprites de arriba y abajo de la excavadora y del
@@ -356,7 +356,7 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
   y con V9990 deja la tinta y pone el fondo negro. Sin V9990 no cambia.
 - **Excavadora arriba/abajo del grafista.** Estaba en la hoja de sprites
   (`or fase 1.png`, 352-383 × 48-63): de espaldas (15) y con la pala
-  delante (14). Sustituye a los dibujos de Rubén de f2i.
+  delante (14). Sustituye a los dibujos de araubi de f2i.
 - **Trampillas del grafista.** Están abajo en la misma hoja (líneas
   224-255): B, en transición y A, uno al lado del otro
   (`TRAMPILLA_DIBUJO`, encajados con las losetas originales). Se pintan
@@ -370,7 +370,7 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
 
 ## 14. f2k (2026-10-23): bote antes de READY?
 
-- **El laberinto daba un bote al poner READY? (GFX9000; Rubén, Canon V-20).**
+- **El laberinto daba un bote al poner READY? (GFX9000; araubi, Canon V-20).**
   Si la interrupción del V9990 se atiende tarde (con la imagen ya empezada),
   escribir el scroll de la capa B recoloca las líneas que faltan aunque el
   valor sea el mismo: ese frame la ventana salía 7 px más arriba. Pasaba al
@@ -382,7 +382,7 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
 
 ## 15. f2l (2026-10-23): logo directo y fantasmas con el hipopótamo
 
-- **Logo de Topo con GFX9000 (Rubén: «sigue yendo fatal»).** Hasta f2k el
+- **Logo de Topo con GFX9000 (araubi: «sigue yendo fatal»).** Hasta f2k el
   logo apuntaba las celdas cambiadas y las volcaba al V9990 en las esperas;
   en las fases largas con las interrupciones cortadas la imagen se quedaba
   quieta y luego se redibujaba de golpe, de izquierda a derecha. Ahora
@@ -406,13 +406,13 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
 - **R800.** El juego va a 10 tics por segundo fijos (espera la
   interrupción), así que el R800 no lo acelera; solo ayuda en lo que va
   justo de tiempo (logo, menús espejo). Sin BIOS de turbo R aquí, falta que
-  Rubén confirme que se enciende el piloto.
+  araubi confirme que se enciende el piloto.
 - Sin GFX9000 la partida es idéntica a f2k (C-BIOS MSX1 y MSX2), y con
   GFX9000 la salida del TMS también.
 
 ## 16. f2m (2026-10-23): flecha contada dos veces y bote tras el logo
 
-- **Fase 2 acabada con una bolita sin comer (Rubén, replay en Canon V-20).**
+- **Fase 2 acabada con una bolita sin comer (araubi, replay en Canon V-20).**
   Fallo del juego original: el tipo de la loseta que pisa el comecocos se
   guarda en una cache (CACHE_TIPO_LOSETA, por columna). HNDLR_BOLITA_NORMAL
   la pone a 15 al comerse la bolita, pero las 4 flechas no: si el comecocos
@@ -450,21 +450,21 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
 
 ## 18. f2o (2026-10-25): las flechas vuelven a obligar a girar
 
-- **Regresión de f2m (Rubén).** Poner CACHE_TIPO_LOSETA a 15 al comer una
+- **Regresión de f2m (araubi).** Poner CACHE_TIPO_LOSETA a 15 al comer una
   flecha hacía que el tic siguiente despachara HNDLR_SUELO_SIN_BOLA, que con
   TEMPORIZADOR_DIRECCION_FORZADA a 0 borra DIRECCION_FORZADA: ninguna flecha
   obligaba ya a girar. En el original es la cache «atrasada» (sigue diciendo
   flecha) la que mantiene la dirección forzada.
 - Ahora la cache no se toca: HNDLR_AUTOCOCO_COMUN fija la dirección siempre
   y, si la loseta ya es la comodín (flecha comida), sale sin volver a
-  contarla, dibujarla ni sumar puntos. Con el replay de Rubén la partida va
+  contarla, dibujarla ni sumar puntos. Con el replay de araubi la partida va
   igual que con f2l (las flechas mandan) y bolitas que quedan + comidas se
   mantiene (114 en la fase 1, 147 en la 2).
 - La partida de compara.sh no pasa por flechas: no detectó la regresión.
 
 ## 19. f2p (2026-10-25): suelo bajo las flechas comidas
 
-- **Raya de 1 píxel al comer flechas (nivel 9, Rubén).** El suelo que queda
+- **Raya de 1 píxel al comer flechas (nivel 9, araubi).** El suelo que queda
   al comerse algo (t1, `laberinto()` en graficos.py) era el suelo del mapa
   más parecido al dibujo de la celda. Una flecha tapa la celda entera, así
   que el parecido no dice nada, y salía una variante rara del suelo: la que
@@ -477,7 +477,7 @@ la mascota de Pepsi (`data/pepsi/sprites_pepsi.bin`, de la cinta).
 
 ## 20. ROM de pruebas «pasar fase» (2026-10-25)
 
-Pedida por Rubén para el testeo: `python3 tools/build.py --pasarfase`
+Pedida por araubi para el testeo: `python3 tools/build.py --pasarfase`
 ensambla con `-DPASAR_FASE` y deja `build/madmix_v9990_pasarfase.rom`.
 VERIFICAR_FIN_NIVEL llama a TRUCO_PASAR_FASE (optimizaciones.asm) en
 vez de a ACTUALIZAR_LOSETA_BOLA_ESPECIAL (misma longitud: no se mueve
@@ -513,7 +513,7 @@ suelo (§21).
 
 ## 24. ROM de prueba «volumen» (2026-10-26)
 
-Pedida por Rubén: muñecos con volumen. `python3 tools/build.py --volumen`
+Pedida por araubi: muñecos con volumen. `python3 tools/build.py --volumen`
 (`-DVOLUMEN`, `MADMIX_VOLUMEN=1` para graficos.py) deja
 `build/madmix_v9990_volumen.rom`; se combina con `--pasarfase`.
 
@@ -534,7 +534,7 @@ Pedida por Rubén: muñecos con volumen. `python3 tools/build.py --volumen`
 
 ## 25. f2t (2026-10-26): suelo bajo el Super Coco del nivel 1
 
-Rubén (y el grafista): al comer el Super Coco del nivel 1 quedaba el
+araubi (y el grafista): al comer el Super Coco del nivel 1 quedaba el
 suelo con sombra arriba, y la casilla tiene muro a la derecha. Para las
 celdas tapadas (bola grande, Super Coco, flechas), graficos.py busca
 primero las celdas vacías del nivel con el mismo entorno: muro o hueco
@@ -545,7 +545,7 @@ celdas del nivel 1 y de ninguna de las demás fases.
 
 ## 26. f2u (2026-10-26): aplastacocos centrado en los pasillos
 
-Rubén: el bicho verde que clava los cocos (Regpunantoso, fases 6 y 7)
+araubi: el bicho verde que clava los cocos (Regpunantoso, fases 6 y 7)
 iba demasiado a la izquierda al subir y bajar. Los sprites del V9990 se
 colocan centrando su caja con la del sprite original, así que el dibujo
 seguía fiel al TMS; el desvío viene del motor: los items de
@@ -561,7 +561,7 @@ nivel 6 a la misma posición del actor (X=76) antes y después.
 
 ## 27. f2v (2026-10-26): tanque mirando a la izquierda
 
-Rubén: el tanque (sprite 23) mirando a la izquierda iba demasiado a la
+araubi: el tanque (sprite 23) mirando a la izquierda iba demasiado a la
 derecha. En el original el sprite tiene hueco 0, así que el TMS refleja
 la caja entera de 24 px; como el cañón sobresale por la derecha, al
 reflejarlo el cuerpo se desplaza 4 px a la derecha. El V9990 copiaba
@@ -571,7 +571,7 @@ cualquier lado y solo cambia de lado el cañón.
 
 ## 28. f2w (2026-10-26): bichos fuera del mapa y suelo de tres bolas
 
-**Mariquita fuera del mapa.** En una partida de Rubén (fase 14) la
+**Mariquita fuera del mapa.** En una partida de araubi (fase 14) la
 mariquita acabó andando por la zona negra de debajo del laberinto. Las
 filas que rodean el cuerpo del nivel en $FC50 son la loseta 66
 (loseta_solida_negra, tipo 16), que para los bichos es transitable; y
@@ -607,7 +607,7 @@ Ahora se copian las líneas 0-191 (V9990 8-199) y el negro empieza en la
 ## 30. f2y (2026-10-26): MSX2, fase 1 (laberinto en SCREEN 5)
 
 El mismo cartucho elige solo: GFX9000 si lo hay; si no, un MSX2 (o
-superior) con 128 KB de VRAM; si no, el MSX1 de siempre. Rubén eligió
+superior) con 128 KB de VRAM; si no, el MSX1 de siempre. araubi eligió
 SCREEN 5 con los gráficos del MSX1 de momento. En la fase 1 la partida
 enseña el laberinto (color de cada fase, scroll siguiendo a la cámara,
 casillas comidas); los muñecos y el marcador son la fase 2 y por ahora
@@ -644,7 +644,7 @@ no se ven. Menús, portada y demás pantallas siguen en SCREEN 2.
 
 ## 31. f2z (2026-10-26): MSX2, fase 2 (muñecos, marco y textos)
 
-Rubén dio por buena la fase 1 y pidió quitar en el MSX2 la opción 3
+araubi dio por buena la fase 1 y pidió quitar en el MSX2 la opción 3
 (The Pepsi Challenge): en MSX2 solo hay gráficos de Mad Mix Game. Con
 GFX9000 y en MSX1 la opción sigue.
 
@@ -689,7 +689,7 @@ GFX9000 y en MSX1 la opción sigue.
 
 ## 32. f30 (2026-10-26): MSX2 a la velocidad del MSX1
 
-Rubén vio la f2z muy lenta. Medido en openMSX (demo, C-BIOS MSX2): cada tic
+araubi vio la f2z muy lenta. Medido en openMSX (demo, C-BIOS MSX2): cada tic
 duraba 282 ms frente a 107 ms en MSX1; el juego solo gastaba ~38 ms y la
 composición ~232 ms. Causas y arreglos:
 
@@ -717,7 +717,7 @@ composición ~232 ms. Causas y arreglos:
 
 ## 33. f31 (2026-10-26): muñecos mirando a la izquierda en MSX2
 
-Rubén: en MSX2 el comecocos y los fantasmas que miran a la izquierda
+araubi: en MSX2 el comecocos y los fantasmas que miran a la izquierda
 salían mal. El MSX2 interpretaba al revés los bits de espejo del motor.
 En el motor del MSX1 el bit 7 es el espejo horizontal (invierte el orden
 de los 3 bytes de cada fila y los bits de cada byte, en máscara y en
@@ -728,11 +728,11 @@ La comprobación anterior no lo vio porque en el MSX1 se volcaba la RAM
 con el dibujo ya girado. Ahora: MSX1 contra el modelo con muñecos en
 otra orientación, 17132 píxeles sin fallos; MSX2 contra el modelo con
 37 muñecos en espejo, 15975 píxeles sin fallos.
-Desde f31 el zip de MSX2 ya no lleva la ROM con volumen (Rubén).
+Desde f31 el zip de MSX2 ya no lleva la ROM con volumen (araubi).
 
 ## 34. f32 (2026-10-26): menú original en MSX2
 
-Rubén pidió la numeración del menú del original en MSX2: 1 TECLADO,
+araubi pidió la numeración del menú del original en MSX2: 1 TECLADO,
 2 JOYSTICK, 3 REDEFINE TECLAS, 4 DEMO y 0 JUGAR, en las filas y la
 columna de siempre ($0548, $0748, $0B48, $0D48 y $1048). Con GFX9000 y
 en MSX1 sigue el menú con la opción de The Pepsi Challenge.

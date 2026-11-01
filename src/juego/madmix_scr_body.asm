@@ -988,7 +988,7 @@ HNDLR_AUTOCOCO_ABAJO:
 ; (CACHE_TIPO_LOSETA): si el comecocos se queda parado en la flecha
 ; (empujando contra una pared), los tics siguientes la siguen viendo
 ; como flecha. El original volvia a contarla y el nivel se acababa con
-; una bolita sin comer (Ruben, fase 2). Ahora, si la loseta ya es la
+; una bolita sin comer (araubi, fase 2). Ahora, si la loseta ya es la
 ; comodin (flecha comida), solo se vuelve a fijar la direccion forzada,
 ; como hacia el original (que la cache siga diciendo flecha es lo que
 ; mantiene esa direccion: con suelo_sin_bola, HNDLR_SUELO_SIN_BOLA la

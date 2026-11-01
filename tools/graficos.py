@@ -565,12 +565,12 @@ SPRITES = {
 }
 # Excavadora hacia abajo (14, con la pala delante) y hacia arriba (15, de
 # espaldas): los dibujos del grafista junto a la caja de la bola de poder
-# (f2j; en f2i eran los de Ruben, graficos/remake/excavadora_vertical.png).
+# (f2j; en f2i eran los de araubi, graficos/remake/excavadora_vertical.png).
 EXCAVADORA = {14: (368, 48, 16, 16), 15: (352, 48, 16, 16)}
 # Correccion a mano (dx, dy) sobre el centrado con el original: el motor
 # pone los items (TABLA_ITEMS_*) 4 px a la izquierda que el comecocos, y
 # el aplastacocos vertical (48-53) quedaba torcido hacia la pared
-# izquierda del pasillo (Ruben, f2u); el horizontal (45-47) va igual
+# izquierda del pasillo (araubi, f2u); el horizontal (45-47) va igual
 # para que no salte al girar. Tanque (23) reflejado (f2v): el TMS
 # refleja la caja entera de 24 (hueco 0) y el cuerpo saltaba 4 px a la
 # derecha al mirar a la izquierda; se deja donde mirando a la derecha.
