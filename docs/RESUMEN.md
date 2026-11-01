@@ -1,8 +1,8 @@
 # Mad Mix Game v9990 — resumen del proyecto
 
 *Diario del proyecto tal como se fue escribiendo. Los `madmix_fXX.zip` que se
-citan son las entregas de cada versión; cada una tiene su etiqueta en este
-repositorio (`f2b` ... `f34`) y se reconstruye con `tools/build.py`.*
+citan son las entregas de cada versión; cada una es un commit de este repositorio
+con su versión al principio del mensaje y se reconstruye con `tools/build.py`.*
 
 *Estado a 20 de octubre de 2026 (F1 terminada).*
 

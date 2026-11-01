@@ -56,7 +56,7 @@ Las opciones renombran la ROM, así que la normal se compila la última. La buil
 
 ## Historial
 
-El historial es el del trabajo real, reescrito para quitar las ROM del juego original y las intermedias. Cada entrega tiene su etiqueta (`f0` ... `f34`); `f34` es la versión publicada. La rama `msx1` guarda la versión solo MSX1 (`f0e`).
+El historial es el del trabajo real, reescrito para quitar las ROM del juego original y las intermedias. Cada entrega es un commit cuyo mensaje empieza por su versión (`f0` ... `f34`); `f34` es la versión publicada. La rama `msx1` guarda la versión solo MSX1 (`f0e`).
 
 ## Créditos
 
